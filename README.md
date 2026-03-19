@@ -46,16 +46,6 @@ Payments are implemented using Stripe test mode — no money is charged and all 
 
 ---
 
-## 📸 Screenshots
-
-| Home Page | Toy Catalog | Admin Dashboard |
-|-----------|-------------|-----------------|
-| _screenshot_ | _screenshot_ | _screenshot_ |
-
-> Run the application and add your own screenshots.
-
----
-
 ## 🏗️ System Architecture
 
 ### Architecture Diagram
