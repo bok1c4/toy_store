@@ -23,14 +23,24 @@ Plaćanje je implementirano kroz Stripe test mode — novac se ne skida sa karti
 
 ## 📸 Screenshots
 
-| Home Page | Katalog igračaka | Admin Dashboard |
-|-----------|-----------------|-----------------|
-| <img width="3440" height="1406" alt="image" src="https://github.com/user-attachments/assets/fb8f43a6-8e1e-4451-b503-f6769a772e0e" />
- | <img width="3440" height="1406" alt="image" src="https://github.com/user-attachments/assets/8db81cc0-e15b-417c-98cc-5524aa66ca93" />
- | <img width="3440" height="1406" alt="image" src="https://github.com/user-attachments/assets/8f8e4292-6c02-47d0-ac8b-dc77c36b36fd" />
- |
-
-> Pokrenite aplikaciju i dodajte screenshots.
+<table>
+  <tr>
+    <th>Home Page</th>
+    <th>Katalog igračaka</th>
+    <th>Admin Dashboard</th>
+  </tr>
+  <tr>
+    <td>
+      <img width="100%" alt="Home Page" src="https://github.com/user-attachments/assets/fb8f43a6-8e1e-4451-b503-f6769a772e0e" />
+    </td>
+    <td>
+      <img width="100%" alt="Katalog igračaka" src="https://github.com/user-attachments/assets/8db81cc0-e15b-417c-98cc-5524aa66ca93" />
+    </td>
+    <td>
+      <img width="100%" alt="Admin Dashboard" src="https://github.com/user-attachments/assets/8f8e4292-6c02-47d0-ac8b-dc77c36b36fd" />
+    </td>
+  </tr>
+</table>
 
 ---
 
