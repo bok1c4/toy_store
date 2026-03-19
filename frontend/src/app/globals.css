@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* shadcn tokens — primary mapped to brand forest green */
+    --background: 60 25% 97%;
+    --foreground: 60 10% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 60 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 60 10% 10%;
+    --primary: 96 57% 20%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 60 5% 42%;
+    --accent: 36 91% 44%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 60 10% 91%;
+    --input: 60 10% 91%;
+    --ring: 96 57% 20%;
+    --radius: 0.5rem;
+
+    /* Brand color tokens */
+    --color-bg:            #FAFAF7;
+    --color-surface:       #FFFFFF;
+    --color-primary:       #2D5016;
+    --color-primary-light: #4A7C23;
+    --color-accent:        #D4820A;
+    --color-accent-light:  #F5A623;
+    --color-text:          #1A1A18;
+    --color-muted:         #6B6B60;
+    --color-border:        #E8E8E0;
+    --color-sage:          #EDF2E8;
+  }
+
+  .dark {
+    /* warm dark palette — brand-aligned, not cold blue */
+    --background: 60 8% 8%;
+    --foreground: 60 15% 92%;
+    --card: 60 7% 11%;
+    --card-foreground: 60 15% 92%;
+    --popover: 60 7% 13%;
+    --popover-foreground: 60 15% 92%;
+    --primary: 96 45% 55%;
+    --primary-foreground: 60 8% 8%;
+    --secondary: 60 6% 16%;
+    --secondary-foreground: 60 15% 92%;
+    --muted: 60 6% 16%;
+    --muted-foreground: 60 8% 55%;
+    --accent: 36 88% 52%;
+    --accent-foreground: 60 8% 8%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 60 15% 92%;
+    --border: 60 5% 18%;
+    --input: 60 5% 18%;
+    --ring: 96 45% 55%;
+
+    /* Brand color tokens — dark overrides */
+    --color-bg:            #141410;
+    --color-surface:       #1C1C17;
+    --color-primary:       #6DAF3A;
+    --color-primary-light: #85C44E;
+    --color-accent:        #E8941A;
+    --color-accent-light:  #F5A623;
+    --color-text:          #F0F0E8;
+    --color-muted:         #8A8A7A;
+    --color-border:        #2E2E28;
+    --color-sage:          #1c2717;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-dm-sans), 'DM Sans', sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-playfair), 'Playfair Display', serif;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .dot-grid {
+    background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .dark .dot-grid {
+    background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+  }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.5s ease-out forwards;
+}
