@@ -2,6 +2,13 @@
 
 > **Language** · [English](./README.md) · [Srpski (Serbian)](./README.sr.md)
 
+[![Go](https://img.shields.io/badge/Go-1.23-00ADD8?logo=go)](https://golang.org)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://postgresql.org)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)](https://redis.io)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://docker.com)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A full-stack Serbian e-commerce web application for selling toys, built with a Go backend API, Next.js 14 frontend, PostgreSQL database, and Redis cache — all orchestrated through Docker Compose and served behind an Nginx reverse proxy.
 
 ---
