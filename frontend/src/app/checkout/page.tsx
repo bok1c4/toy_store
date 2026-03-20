@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCart } from '@/hooks/useCart';
 import { useOrderStore } from '@/store/orderStore';
 import { Button } from '@/components/ui/button';
@@ -216,9 +217,12 @@ function CheckoutPage({ items, subtotal, cartLoading }: {
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-4 border-b border-border pb-4 last:border-0">
                     <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
-                      {item.toy?.imageUrl ? (
-                        <img src={item.toy.imageUrl} alt={item.toy.name} className="h-full w-full object-cover" />
-                      ) : (
+                      {item.toy?.imageUrl && (
+                        <>
+                          <Image src={item.toy.imageUrl} alt={item.toy.name ?? ''} fill className="object-cover" />
+                        </>
+                      )}
+                      {!item.toy?.imageUrl && (
                         <div className="flex h-full w-full items-center justify-center bg-muted">
                           <ShoppingCart className="h-8 w-8 text-muted-foreground" />
                         </div>

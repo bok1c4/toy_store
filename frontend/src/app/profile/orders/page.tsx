@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useOrderStore } from '@/store/orderStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -152,10 +153,11 @@ export default function OrdersPage(): JSX.Element {
                       {order.items.slice(0, 3).map((item, idx) => (
                         <div key={idx} className="relative h-12 w-12 overflow-hidden rounded bg-muted">
                           {item.toy_image_url ? (
-                            <img
+                            <Image
                               src={item.toy_image_url}
                               alt={item.toy_name}
-                              className="h-full w-full object-cover"
+                              fill
+                              className="object-cover"
                             />
                           ) : (
                             <Package className="h-full w-full p-2 text-muted-foreground/40" />

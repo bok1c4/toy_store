@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useOrderStore } from '@/store/orderStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -155,7 +156,7 @@ export default function OrderDetailPage(): JSX.Element {
                 <div key={item.id} className="flex gap-4 border-b border-border pb-4 last:border-0">
                   <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
                     {item.toy_image_url ? (
-                      <img src={item.toy_image_url} alt={item.toy_name} className="h-full w-full object-cover" />
+                      <Image src={item.toy_image_url} alt={item.toy_name} fill className="object-cover" />
                     ) : (
                       <Package className="h-full w-full p-4 text-muted-foreground/40" />
                     )}

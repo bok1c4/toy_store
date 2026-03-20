@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { Badge } from '@/components/ui/badge';
@@ -76,11 +77,12 @@ export function FeaturedToys({ toys, isAuthenticated }: FeaturedToysProps) {
               >
                 {/* Product image */}
                 <Link href={`/toys/${toy.toyId}`} className="block">
-                  <div className="aspect-square bg-brand-sage overflow-hidden group-hover:opacity-90 transition-opacity">
-                    <img
+                  <div className="aspect-square bg-brand-sage overflow-hidden group-hover:opacity-90 transition-opacity relative">
+                    <Image
                       src={toy.imageUrl}
                       alt={toy.name}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
                     />
                   </div>
                 </Link>

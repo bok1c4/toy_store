@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useOrderStore } from '@/store/orderStore';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Package, ShoppingBag } from 'lucide-react';
@@ -103,10 +104,11 @@ function CheckoutSuccessContent(): JSX.Element {
                 <div key={item.id} className="flex gap-4 border-b border-border pb-4 last:border-0">
                   <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
                     {item.toy_image_url ? (
-                      <img
+                      <Image
                         src={item.toy_image_url}
                         alt={item.toy_name}
-                        className="h-full w-full object-cover"
+                        fill
+                        className="object-cover"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-muted">

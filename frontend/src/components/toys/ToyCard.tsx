@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 
@@ -88,10 +89,11 @@ export function ToyCard({
         )}
 
         <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-          <img
+          <Image
             src={toy.imageUrl}
             alt={toy.name}
-            className="h-full w-full object-cover"
+            fill
+            className="object-cover"
           />
           {isAuthenticated && (
             <button

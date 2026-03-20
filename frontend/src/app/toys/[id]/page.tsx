@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useCartStore } from '@/store/cartStore';
@@ -157,11 +158,12 @@ export default function ToyDetailPage(): JSX.Element {
         </Link>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          <div className="aspect-square overflow-hidden rounded-lg bg-card border border-border shadow-sm">
-            <img
+          <div className="aspect-square overflow-hidden rounded-lg bg-card border border-border shadow-sm relative">
+            <Image
               src={toy.imageUrl}
               alt={toy.name}
-              className="h-full w-full object-cover"
+              fill
+              className="object-cover"
             />
           </div>
 
