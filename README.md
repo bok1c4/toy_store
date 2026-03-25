@@ -28,7 +28,7 @@ Payments are implemented using Stripe test mode — no money is charged and all 
 <table>
   <tr>
     <th>Home Page</th>
-    <th>Katalog igračaka</th>
+    <th>Toys Catalog</th>
     <th>Admin Dashboard</th>
   </tr>
   <tr>
