@@ -1,6 +1,8 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { ToyCard, Toy } from '@/components/toys/ToyCard';
 import { ToyFilters, AgeGroup, ToyType } from '@/components/toys/ToyFilters';
@@ -32,14 +34,23 @@ interface ToyTypesResponse {
   data: ToyType[];
 }
 
-export default function ToysPage(): JSX.Element {
+function ToysPageContent(): JSX.Element {
   const [toys, setToys] = useState<Toy[]>([]);
   const [ageGroups, setAgeGroups] = useState<AgeGroup[]>([]);
   const [toyTypes, setToyTypes] = useState<ToyType[]>([]);
 
-  const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
-  const [selectedType, setSelectedType] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+const searchParams = useSearchParams();
+const [selectedAgeGroup, setSelectedAgeGroup] = useState(searchParams.get('ageGroup') || '');
+const [selectedType, setSelectedType] = useState(searchParams.get('type') || '');
+const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+
+  // Sync filter state when URL search params change (e.g. navigating from home page category/age links)
+  useEffect(() => {
+    setSelectedAgeGroup(searchParams.get('ageGroup') || '');
+    setSelectedType(searchParams.get('type') || '');
+    setSearchQuery(searchParams.get('q') || '');
+    setPage(1);
+  }, [searchParams]);
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -170,7 +181,7 @@ export default function ToysPage(): JSX.Element {
         <h1 className="mb-8 font-display text-3xl font-bold text-foreground">Katalog igračaka</h1>
 
         <div className="mb-6">
-          <ToySearch onSearch={handleSearch} />
+          <ToySearch onSearch={handleSearch} initialValue={searchQuery} />
         </div>
 
         <div className="grid gap-8 lg:grid-cols-4">
@@ -288,5 +299,13 @@ export default function ToysPage(): JSX.Element {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ToysPage(): JSX.Element {
+  return (
+    <Suspense>
+      <ToysPageContent />
+    </Suspense>
   );
 }

@@ -138,6 +138,30 @@ func (h *ToyHandler) GetAgeGroups(c *gin.Context) {
 	})
 }
 
+func (h *ToyHandler) SearchSuggestions(c *gin.Context) {
+	query := c.Query("q")
+	limitStr := c.DefaultQuery("limit", "5")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 20 {
+		limit = 5
+	}
+
+	suggestions, err := h.toyService.GetSearchSuggestions(c.Request.Context(), query, limit)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get search suggestions")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "unable to load suggestions. please try again later.",
+			"code":  "TOY_SERVICE_UNAVAILABLE",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": suggestions,
+	})
+}
+
 func (h *ToyHandler) GetTypes(c *gin.Context) {
 	toyTypes, err := h.toyService.GetTypes(c.Request.Context())
 	if err != nil {

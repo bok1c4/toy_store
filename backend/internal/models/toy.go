@@ -12,6 +12,15 @@ type Toy struct {
 	Permalink   string `json:"permalink"`
 }
 
+// SearchSuggestion represents a toy suggestion for autocomplete
+type SearchSuggestion struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Image string `json:"image"`
+	Slug  string `json:"slug"`
+}
+
 // ToyExternal represents the external API response format
 type ToyExternal struct {
 	ToyID       int            `json:"toyId"`

@@ -256,6 +256,35 @@ func (s *ToyService) GetTypes(ctx context.Context) ([]models.ToyType, error) {
 	return toyTypes, nil
 }
 
+// GetSearchSuggestions returns toy suggestions for autocomplete based on query
+func (s *ToyService) GetSearchSuggestions(ctx context.Context, query string, limit int) ([]models.SearchSuggestion, error) {
+	if query == "" {
+		return []models.SearchSuggestion{}, nil
+	}
+
+	toys, err := s.GetAllFiltered(ctx, "", "", query)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(toys) > limit {
+		toys = toys[:limit]
+	}
+
+	suggestions := make([]models.SearchSuggestion, len(toys))
+	for i, toy := range toys {
+		suggestions[i] = models.SearchSuggestion{
+			ID:    toy.ID,
+			Name:  toy.Name,
+			Type:  toy.Type,
+			Image: toy.Image,
+			Slug:  toy.Permalink,
+		}
+	}
+
+	return suggestions, nil
+}
+
 func FilterToys(toys []models.Toy, ageGroup, toyType, query string) []models.Toy {
 	// Ensure we never return nil
 	if toys == nil {

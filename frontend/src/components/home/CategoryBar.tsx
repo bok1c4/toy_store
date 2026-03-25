@@ -36,7 +36,7 @@ export function CategoryBar({ types }: CategoryBarProps) {
             return (
               <Link
                 key={t.typeId}
-                href={`/toys?type=${t.typeId}`}
+                href={`/toys?type=${encodeURIComponent(t.name)}`}
                 className="flex-shrink-0 inline-flex items-center gap-1.5 font-sans text-sm font-medium px-4 py-2 rounded-full border border-border text-foreground hover:border-brand-primary hover:text-brand-primary hover:bg-brand-sage transition-colors whitespace-nowrap"
               >
                 {emoji} {t.name}

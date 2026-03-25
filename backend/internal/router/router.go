@@ -75,10 +75,11 @@ func New() *gin.Engine {
 	toyGroup := r.Group("/api/toys")
 	{
 		toyGroup.GET("", toyHandler.GetToys)
-		toyGroup.GET("/:id", toyHandler.GetToyByID)
-		toyGroup.GET("/permalink/:slug", toyHandler.GetToyByPermalink)
+		toyGroup.GET("/suggest", toyHandler.SearchSuggestions)
 		toyGroup.GET("/age-groups", toyHandler.GetAgeGroups)
 		toyGroup.GET("/types", toyHandler.GetTypes)
+		toyGroup.GET("/permalink/:slug", toyHandler.GetToyByPermalink)
+		toyGroup.GET("/:id", toyHandler.GetToyByID)
 	}
 
 	userGroup := r.Group("/api/user")

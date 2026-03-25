@@ -1,10 +1,10 @@
 import Link from 'next/link';
 
 const showcaseCards = [
-  { emoji: '🧩', label: 'Slagalice', href: '/toys?type=1' },
-  { emoji: '🚗', label: 'Vozila', href: '/toys?type=2' },
-  { emoji: '🎨', label: 'Kreativne', href: '/toys?type=3' },
-  { emoji: '🧸', label: 'Plišane', href: '/toys?type=4' },
+  { emoji: '🧩', label: 'Slagalice', href: '/toys?type=Slagalica' },
+  { emoji: '🚗', label: 'Vozila', href: '/toys?type=Vozilo' },
+  { emoji: '🎨', label: 'Kreativne', href: '/toys?type=Kreativnost' },
+  { emoji: '🧸', label: 'Plišane', href: '/toys?type=Plišana' },
 ];
 
 export function HeroSection() {
@@ -40,12 +40,12 @@ export function HeroSection() {
             >
               Istraži kolekciju →
             </Link>
-            <Link
-              href="/toys?ageGroup=1"
-              className="inline-flex items-center gap-2 border border-brand-primary text-brand-primary font-sans font-semibold px-6 py-3 rounded-full hover:bg-brand-sage transition-colors"
-            >
-              Pokloni za bebe
-            </Link>
+<Link
+               href="/toys?ageGroup=0-2"
+               className="inline-flex items-center gap-2 border border-brand-primary text-brand-primary font-sans font-semibold px-6 py-3 rounded-full hover:bg-brand-sage transition-colors"
+             >
+               Pokloni za bebe
+             </Link>
           </div>
         </div>
 

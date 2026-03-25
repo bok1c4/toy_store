@@ -37,6 +37,7 @@ opencode.json
 .vscode/
 *.swp
 *.swo
+.tsconfig.tsbuildinfo
 *~
 .DS_Store
 

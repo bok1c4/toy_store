@@ -35,26 +35,26 @@ export function AgeGroupSection({ ageGroups }: AgeGroupSectionProps) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {ageGroups.map((ag) => {
-            const emoji = ageEmojis[ag.name] ?? '🎁';
-            const desc = ageDescriptions[ag.name] ?? ag.description;
-            return (
-              <Link
-                key={ag.ageGroupId}
-                href={`/toys?ageGroup=${ag.ageGroupId}`}
-                className="group flex flex-col items-center text-center gap-3 bg-card border border-border rounded-2xl p-6 hover:border-brand-primary hover:shadow-md transition-all"
-              >
-                <span className="text-4xl">{emoji}</span>
-                <p className="font-display text-xl font-bold text-foreground group-hover:text-brand-primary transition-colors">
-                  {ag.name} god.
-                </p>
-                <p className="font-sans text-sm text-muted-foreground leading-relaxed">{desc}</p>
-                <span className="font-sans text-xs font-semibold text-brand-primary mt-1">
-                  Pogledaj →
-                </span>
-              </Link>
-            );
-          })}
+{ageGroups.map((ag) => {
+             const emoji = ageEmojis[ag.name] ?? '🎁';
+             const desc = ageDescriptions[ag.name] ?? ag.description;
+             return (
+               <Link
+                 key={ag.ageGroupId}
+                 href={`/toys?ageGroup=${encodeURIComponent(ag.name)}`}
+                 className="group flex flex-col items-center text-center gap-3 bg-card border border-border rounded-2xl p-6 hover:border-brand-primary hover:shadow-md transition-all"
+               >
+                 <span className="text-4xl">{emoji}</span>
+                 <p className="font-display text-xl font-bold text-foreground group-hover:text-brand-primary transition-colors">
+                   {ag.name} god.
+                 </p>
+                 <p className="font-sans text-sm text-muted-foreground leading-relaxed">{desc}</p>
+                 <span className="font-sans text-xs font-semibold text-brand-primary mt-1">
+                   Pogledaj →
+                 </span>
+               </Link>
+             );
+           })}
         </div>
       </div>
     </section>
