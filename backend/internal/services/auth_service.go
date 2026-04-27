@@ -110,7 +110,8 @@ func (s *AuthService) Login(ctx context.Context, req *models.LoginRequest) (*mod
 	}
 
 	refreshKey := s.jwtManager.GetRefreshTokenKey(user.ID, claims.RegisteredClaims.ID)
-	if err := s.redisClient.Set(ctx, refreshKey, "valid", 168*time.Hour).Err(); err != nil {
+	// TTL must match the JWT exp claim (set via JWT_REFRESH_TTL); see JWTManager.RefreshTTL.
+	if err := s.redisClient.Set(ctx, refreshKey, "valid", s.jwtManager.RefreshTTL()).Err(); err != nil {
 		return nil, fmt.Errorf("failed to store refresh token: %w", err)
 	}
 
@@ -190,7 +191,8 @@ func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (*
 	}
 
 	newRefreshKey := s.jwtManager.GetRefreshTokenKey(user.ID, newClaims.RegisteredClaims.ID)
-	if err := s.redisClient.Set(ctx, newRefreshKey, "valid", 168*time.Hour).Err(); err != nil {
+	// TTL must match the JWT exp claim (set via JWT_REFRESH_TTL); see JWTManager.RefreshTTL.
+	if err := s.redisClient.Set(ctx, newRefreshKey, "valid", s.jwtManager.RefreshTTL()).Err(); err != nil {
 		return nil, fmt.Errorf("failed to store new refresh token: %w", err)
 	}
 

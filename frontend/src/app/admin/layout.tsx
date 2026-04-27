@@ -46,6 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/analytics', label: 'Analitika' },
     { href: '/admin/users', label: 'Korisnici' },
     { href: '/admin/orders', label: 'Porudžbine' },
+    { href: '/admin/cancellation-requests', label: 'Otkazivanja' },
   ];
 
   return (

@@ -131,11 +131,13 @@ Strukturirano logovanje je implementirano kroz `zerolog` koji piše JSON linije 
 
 #### Frontend (Next.js 14 App Router)
 
-Next.js 14 sa App Router-om koristimo iz nekoliko razloga. Server-side rendering poboljšava SEO jer pretraživači dobijaju potpuno renderovan HTML, a ne praznu `<div id="root">` stranicu. File-based routing smanjuje konfiguraciju. React Server Components omogućavaju data fetching na serveru — home page preuzima katalog igračaka direktno od backend-a unutar Docker mreže (`http://backend:8080`) bez toga da taj zahtev prolazi kroz browser korisnika, čime se eliminiše waterfall i smanjuje latencija.
+Next.js 14 sa App Router-om koristimo iz nekoliko razloga. Server-side rendering poboljšava SEO jer pretraživači dobijaju potpuno renderovan HTML, a ne praznu `<div id="root">` stranicu. File-based routing smanjuje konfiguraciju. Home page (`app/page.tsx`) je React Server Component — preuzima katalog igračaka direktno od backend-a unutar Docker mreže (`http://backend:8080`, konfigurisano kroz `INTERNAL_API_URL`) bez toga da taj zahtev prolazi kroz browser korisnika.
 
-Client Components (`'use client'`) koristimo samo tamo gde je neophodno — za interaktivne elemente kao što su korpa, forma za prijavu i lista želja. Ostatak aplikacije su Server Components koji se renderuju na serveru i šalju gotov HTML.
+Većina ostalih stranica — uključujući namensku stranicu kataloga (`app/toys/page.tsx`), korpu, checkout, profil, listu želja, login/register i admin panel — su Client Components (`'use client'`) jer zavise od interaktivnog stanja (Zustand korpa, unos forme, JWT-bearing Axios pozivi). Server Component pristup se koristi selektivno tamo gde SSR donosi konkretnu prednost (početni render home page-a); stranice koje bi se ionako re-renderovale na klijentu drže se kao obični client komponenti da se izbegne hydration gužva.
 
-Axios interceptor (`lib/api.ts`) automatski dodaje JWT access token na svaki zahtev iz browser-a. Tokeni se čuvaju u **localStorage** za pristup iz Axios interceptora, a paralelno se upisuju u **cookies** za pristup iz Next.js middleware-a. Oba skladišta se sinhronizuju pri svakoj promeni auth stanja.
+Axios interceptor (`lib/api.ts`) automatski dodaje JWT access token na svaki zahtev iz browser-a. Tokeni se čuvaju u **localStorage** za pristup iz Axios interceptora, a paralelno se upisuju u **cookies** za pristup iz Next.js middleware-a. Oba skladišta se sinhronizuju pri svakoj promeni auth stanja. Cookie `max-age` je postavljen na 900 sekundi (15 minuta) da odgovara `JWT_ACCESS_TTL`; kada cookie istekne, Next.js middleware ne vidi token i redirectuje `/admin/*` na `/login`. Axios interceptor u browser-u onda transparentno osveži tokene koristeći dugotrajni refresh token iz localStorage-a i ponovo upisuje cookie i access token.
+
+Server-side gating ruta u `middleware.ts` pokriva **samo `/admin/*`** (auth + role provera) i auth-state redirecte na `/login`/`/register`. Ostale autentifikovane rute — `/cart`, `/checkout`, `/profile`, `/profile/orders`, `/wishlist` — gate-ovane su na klijentu: komponente se oslanjaju na to da Axios interceptor vrati 401 na zaštićenim API pozivima i na page-level provere u `useEffect`. Ovo je namerno: te stranice su interaktivne i ionako im treba Zustand store, pa SSR redirect ne smanjuje meaningful attack surface (stvarni podaci su zaštićeni backend-ovim `RequireAuth`).
 
 Kada token istekne i backend vrati 401, interceptor transparentno poziva refresh endpoint, dobija novi par tokena i ponavlja originalni zahtev — korisnik ovo ne primećuje. Ključna bezbednosna detalj: interceptor **ne redirectuje na `/login`** ako korisnik nije ulogovan (nema refresh token) — samo odbija zahtev. Redirect na login se dešava jedino kada je korisnik bio ulogovan ali mu je sesija istekla.
 
@@ -242,7 +244,7 @@ Predstavlja aktivnu korpu svakog korisnika. Korpa nije porudžbina — briše se
 | `toy_image_cache` | `TEXT` nullable | Keširana URL slike |
 | `price_cache` | `NUMERIC(10,2)` NOT NULL | Keširana cena u najmanjoj jedinici u trenutku dodavanja |
 | `quantity` | `INTEGER` NOT NULL DEFAULT `1` CHECK `> 0` | Količina u korpi |
-| `updated_at` | `TIMESTAMPTZ` NOT NULL | Poslednja izmena |
+| `updated_at` | `TIMESTAMPTZ` NOT NULL DEFAULT `NOW()` | Poslednja izmena |
 | UNIQUE(`user_id`, `toy_id`) | | Korisnik ne može dva puta dodati istu igračku — samo menja količinu |
 
 ### Tabela `wishlist_items`
@@ -349,6 +351,10 @@ Rate limiting je implementiran na Nginx nivou, a ne u aplikacionom kodu. Postoje
 
 Prednost Nginx nivoa u odnosu na aplikacioni nivo: Nginx blokira zahtev pre nego što Go proces alocira goroutinu i parsira telo zahteva. Napadač koji generiše 10.000 zahteva u sekundi troši samo Nginx resurse — minimalne u poređenju sa Go runtime-om.
 
+### CORS
+
+Go backend trenutno postavlja `Access-Control-Allow-Origin: *` i eksplicitno dozvoljava `Authorization` header (vidi `internal/router/router.go`). Ovo je pogodno za lokalni razvoj iza Nginx-a (browser komunicira samo sa `http://localhost`, pa cross-origin zahtevi praktično ne postoje u deployment-u), ali **produkcijski deployment treba da zameni wildcard sa eksplicitnom listom dozvoljenih origin-a** pre izlaganja backend-a na zasebnom domenu.
+
 ### Validacija inputa
 
 Validacija se odvija na oba sloja sistema bez izuzetka.
@@ -408,11 +414,11 @@ query := "SELECT * FROM users WHERE email = '" + email + "'"
 | `POST` | `/api/wishlist` | ✅ | Dodaj igračku u listu želja |
 | `DELETE` | `/api/wishlist/:toy_id` | ✅ | Ukloni igračku iz liste želja |
 | `GET` | `/api/wishlist/check/:toy_id` | ✅ | Proveri da li je igračka u listi želja |
-| `POST` | `/api/checkout` | ✅ | Direktan checkout (mock mode) |
-| `POST` | `/api/checkout/intent` | ✅ | Kreira Stripe PaymentIntent, vraća `client_secret` |
-| `POST` | `/api/checkout/confirm` | ✅ | Potvrdi Stripe plaćanje i kreira porudžbinu |
+| `POST` | `/api/checkout` | ✅ | Uvek-mock checkout — koristi `Simulate` čak i kad je `STRIPE_SECRET_KEY` postavljen |
+| `POST` | `/api/checkout/intent` | ✅ | Kreira Stripe PaymentIntent, vraća `client_secret` (pravi Stripe tok, korak 1 od 2) |
+| `POST` | `/api/checkout/confirm` | ✅ | Verifikuje PaymentIntent i kreira porudžbinu (pravi Stripe tok, korak 2 od 2) |
 | `GET` | `/api/checkout/simulate` | ✅ | Simuliraj plaćanje (test endpoint) |
-| `POST` | `/api/webhook/stripe` | ❌* | Stripe webhook za asinhrone statusе plaćanja |
+| `POST` | `/api/webhook/stripe` | ❌* | Stripe webhook — samo za posmatranje (loguje `payment_intent.succeeded` / `.payment_failed`); ne menja `orders.payment_status` |
 | `GET` | `/api/admin/users` | 👑 | Lista svih korisnika (admin) |
 | `GET` | `/api/admin/users/:id` | 👑 | Detalji korisnika (admin) |
 | `PUT` | `/api/admin/users/:id` | 👑 | Izmena korisnika — aktivacija/deaktivacija (admin) |
@@ -771,7 +777,6 @@ Ovo je akademski projekat. Neka ograničenja su namerna, neka bi se rešila u pr
 
 **Stripe webhook** zahteva Stripe CLI alat za lokalno testiranje jer Stripe ne može da pošalje HTTP zahtev na `localhost`. Endpoint `/api/webhook/stripe` postoji i verifikuje HMAC potpis, ali se ne poziva automatski u lokalnom razvoju. U produkciji bi se podesio pravi webhook URL na Stripe Dashboard-u i `STRIPE_WEBHOOK_SECRET` u `.env`.
 
-**Admin panel — zahtevi za otkazivanje** (`/admin/cancellation-requests`): Backend endpoint-i postoje (`/api/admin/cancellation-requests`, `/approve`, `/decline`) ali admin UI za upravljanje otkazivanjima nije implementiran u frontendu. Korisnici mogu zatražiti otkazivanje iz profila, a admin vidi broj zahteva u analitici, ali nema dedicated stranicu za odobravanje/odbijanje. Ovo je planirana nadogradnja.
 
 **Email notifikacije** nisu implementirane. Sistem ne šalje potvrdu porudžbine, obaveštenje o statusu dostave ni reset lozinke na email.
 

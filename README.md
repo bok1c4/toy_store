@@ -131,11 +131,13 @@ Structured logging is implemented through `zerolog` which writes JSON lines to s
 
 #### Frontend (Next.js 14 App Router)
 
-We use Next.js 14 with the App Router for several reasons. Server-side rendering improves SEO because search engines receive fully rendered HTML, not an empty `<div id="root">` page. File-based routing reduces configuration. React Server Components enable data fetching on the server — the home page fetches the toy catalog directly from the backend within the Docker network (`http://backend:8080`) without that request going through the user's browser, eliminating waterfalls and reducing latency.
+We use Next.js 14 with the App Router. Server-side rendering improves SEO because search engines receive fully rendered HTML, not an empty `<div id="root">` page. File-based routing reduces configuration. The home page (`app/page.tsx`) is a React Server Component — it fetches the toy catalog directly from the backend within the Docker network (`http://backend:8080`, configured via `INTERNAL_API_URL`) without that request going through the user's browser.
 
-Client Components (`'use client'`) are used only where necessary — for interactive elements such as the cart, login form, and wishlist. The rest of the application are Server Components rendered on the server and sent as finished HTML.
+Most other pages — including the dedicated catalog page (`app/toys/page.tsx`), cart, checkout, profile, wishlist, login/register, and the admin panel — are Client Components (`'use client'`) because they depend on interactive state (Zustand cart, form input, JWT-bearing Axios calls). The Server Component pattern is used selectively where SSR delivers a meaningful benefit (initial home-page render); pages that would re-render client-side anyway are kept as plain client components to avoid hydration churn.
 
-The Axios interceptor (`lib/api.ts`) automatically adds the JWT access token to every request from the browser. Tokens are stored in **localStorage** for access from the Axios interceptor, and simultaneously written to **cookies** for access from the Next.js middleware. Both stores are synchronized on every auth state change.
+The Axios interceptor (`lib/api.ts`) automatically adds the JWT access token to every request from the browser. Tokens are stored in **localStorage** for access from the Axios interceptor, and simultaneously written to **cookies** for access from the Next.js middleware. Both stores are synchronized on every auth state change. Cookie `max-age` is set to 900 seconds (15 minutes) to match `JWT_ACCESS_TTL`; once the cookie expires, the Next.js middleware sees no token and redirects `/admin/*` to `/login`. The Axios interceptor in the browser then transparently refreshes from the long-lived refresh token in localStorage and re-saves both cookie and access token.
+
+Server-side route gating in `middleware.ts` covers **only `/admin/*`** (auth + role check) and the auth-state redirects on `/login`/`/register`. The other authenticated routes — `/cart`, `/checkout`, `/profile`, `/profile/orders`, `/wishlist` — are gated client-side: components rely on the Axios interceptor returning 401 on protected API calls and on the page-level checks performed in `useEffect`. This is intentional: those pages are interactive and need the Zustand store anyway, so adding an SSR redirect would not meaningfully reduce attack surface (the actual data is gated by the backend's `RequireAuth`).
 
 When a token expires and the backend returns 401, the interceptor transparently calls the refresh endpoint, gets a new token pair, and retries the original request — the user doesn't notice. Key security detail: the interceptor **does not redirect to `/login`** if the user is not logged in (has no refresh token) — it simply rejects the request. Redirect to login only happens when the user was logged in but their session expired.
 
@@ -242,7 +244,7 @@ Represents the active cart of each user. A cart is not an order — it is delete
 | `toy_image_cache` | `TEXT` nullable | Cached image URL |
 | `price_cache` | `NUMERIC(10,2)` NOT NULL | Cached price in smallest unit at time of adding |
 | `quantity` | `INTEGER` NOT NULL DEFAULT `1` CHECK `> 0` | Quantity in cart |
-| `updated_at` | `TIMESTAMPTZ` NOT NULL | Last modification |
+| `updated_at` | `TIMESTAMPTZ` NOT NULL DEFAULT `NOW()` | Last modification |
 | UNIQUE(`user_id`, `toy_id`) | | A user cannot add the same toy twice — only changes quantity |
 
 ### Table `wishlist_items`
@@ -349,6 +351,10 @@ Rate limiting is implemented at the Nginx level, not in application code. There 
 
 Advantage of Nginx-level over application-level: Nginx blocks the request before the Go process allocates a goroutine and parses the request body. An attacker generating 10,000 requests per second only consumes Nginx resources — minimal compared to the Go runtime.
 
+### CORS
+
+The Go backend currently sets `Access-Control-Allow-Origin: *` and explicitly allows the `Authorization` header (see `internal/router/router.go`). This is convenient for local development behind Nginx (the browser only ever talks to `http://localhost`, so no cross-origin requests actually happen in the deployed setup), but **a production deployment should replace the wildcard with an explicit allowlist** of trusted origins before exposing the backend on a separate domain.
+
 ### Input Validation
 
 Validation happens at both layers of the system without exception.
@@ -408,11 +414,11 @@ query := "SELECT * FROM users WHERE email = '" + email + "'"
 | `POST` | `/api/wishlist` | ✅ | Add toy to wishlist |
 | `DELETE` | `/api/wishlist/:toy_id` | ✅ | Remove toy from wishlist |
 | `GET` | `/api/wishlist/check/:toy_id` | ✅ | Check if toy is on wishlist |
-| `POST` | `/api/checkout` | ✅ | Direct checkout (mock mode) |
-| `POST` | `/api/checkout/intent` | ✅ | Create Stripe PaymentIntent, returns `client_secret` |
-| `POST` | `/api/checkout/confirm` | ✅ | Confirm Stripe payment and create order |
+| `POST` | `/api/checkout` | ✅ | Always-mock checkout — uses `Simulate` even when `STRIPE_SECRET_KEY` is set |
+| `POST` | `/api/checkout/intent` | ✅ | Create Stripe PaymentIntent, returns `client_secret` (real Stripe path, step 1 of 2) |
+| `POST` | `/api/checkout/confirm` | ✅ | Verify PaymentIntent and create order (real Stripe path, step 2 of 2) |
 | `GET` | `/api/checkout/simulate` | ✅ | Simulate payment (test endpoint) |
-| `POST` | `/api/webhook/stripe` | ❌* | Stripe webhook for async payment status |
+| `POST` | `/api/webhook/stripe` | ❌* | Stripe webhook — observability only (logs `payment_intent.succeeded` / `.payment_failed`); does not mutate `orders.payment_status` |
 | `GET` | `/api/admin/users` | 👑 | List all users (admin) |
 | `GET` | `/api/admin/users/:id` | 👑 | User details (admin) |
 | `PUT` | `/api/admin/users/:id` | 👑 | Update user — activate/deactivate (admin) |
@@ -779,8 +785,6 @@ This is an academic project. Some limitations are intentional, some would be res
 **HTTPS** is not configured. Nginx listens on port 80 (HTTP). In production, you would add an SSL certificate (Let's Encrypt via Certbot) and an HTTP-to-HTTPS redirect in nginx.conf.
 
 **Catalog pagination** is performed client-side on the frontend because the backend returns all toys from Redis cache at once. Server-side pagination would be more efficient for a large catalog.
-
-**Admin panel — cancellation requests** (`/admin/cancellation-requests`): Backend endpoints exist (`/api/admin/cancellation-requests`, `/approve`, `/decline`) but the admin UI for managing cancellations is not implemented. Users can request cancellation from their profile, and admins see the number of requests in analytics, but there is no dedicated page for approving/declining. This is a planned upgrade.
 
 ---
 

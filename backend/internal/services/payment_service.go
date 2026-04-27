@@ -109,48 +109,6 @@ func (s *PaymentService) VerifyPaymentIntent(piID string) bool {
 	return pi.Status == stripe.PaymentIntentStatusSucceeded
 }
 
-// processStripePayment processes a payment using Stripe
-func (s *PaymentService) processStripePayment(ctx context.Context, amount float64, shouldFail bool) *models.PaymentResult {
-	if shouldFail {
-		return &models.PaymentResult{
-			Success:       false,
-			TransactionID: "STRIPE-FAIL",
-		}
-	}
-
-	// Set Stripe secret key
-	stripe.Key = s.stripeSecretKey
-
-	// Create PaymentIntent
-	params := &stripe.PaymentIntentParams{
-		Amount:   stripe.Int64(int64(amount * 100)), // Convert to cents
-		Currency: stripe.String(string(stripe.CurrencyUSD)),
-		AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{
-			Enabled: stripe.Bool(true),
-		},
-	}
-
-	pi, err := paymentintent.New(params)
-	if err != nil {
-		log.Error().Err(err).Float64("amount", amount).Msg("failed to create Stripe payment intent")
-		return &models.PaymentResult{
-			Success:       false,
-			TransactionID: "",
-		}
-	}
-
-	log.Info().
-		Str("payment_intent_id", pi.ID).
-		Float64("amount", amount).
-		Str("status", string(pi.Status)).
-		Msg("Stripe payment intent created")
-
-	return &models.PaymentResult{
-		Success:       true,
-		TransactionID: pi.ID,
-	}
-}
-
 // VerifyWebhook verifies a Stripe webhook signature.
 // Skipped when Stripe is not configured or when webhook secret is not set.
 func (s *PaymentService) VerifyWebhook(payload []byte, signature string) error {

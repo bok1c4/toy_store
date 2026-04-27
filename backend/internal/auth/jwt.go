@@ -91,3 +91,10 @@ func (m *JWTManager) ValidateToken(tokenString string) (*Claims, error) {
 func (m *JWTManager) GetRefreshTokenKey(userID, jti string) string {
 	return fmt.Sprintf("refresh:%s:%s", userID, jti)
 }
+
+// RefreshTTL returns the refresh-token lifetime configured via JWT_REFRESH_TTL.
+// Used by AuthService to keep the Redis revocation entry's TTL in sync with the
+// JWT exp claim — without this, JWT exp and Redis would diverge if the env var changes.
+func (m *JWTManager) RefreshTTL() time.Duration {
+	return m.refreshTTL
+}

@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toy Store — System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-2: #11171f;
+    --panel: #161c25;
+    --panel-2: #1c2530;
+    --ink: #e6edf3;
+    --ink-dim: #8b949e;
+    --ink-faint: #545d68;
+    --grid: rgba(139, 148, 158, 0.07);
+    --grid-strong: rgba(139, 148, 158, 0.14);
+    --rule: #2a323d;
+    --accent: #d4ff3a;       /* electric lime — the engineering blueprint pop */
+    --accent-dim: #9ab828;
+    --warn: #ff7849;
+    --bad: #f85149;
+    --ok: #7ee787;
+    --info: #79c0ff;
+    --serif: 'Fraunces', Georgia, serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 32px 32px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--accent); color: var(--bg); }
+
+  /* ---------- NAVIGATION ---------- */
+  nav.toc {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: rgba(13, 17, 23, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--rule);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  nav.toc::-webkit-scrollbar { display: none; }
+  nav.toc .brand {
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 32px;
+    white-space: nowrap;
+  }
+  nav.toc a {
+    color: var(--ink-dim);
+    text-decoration: none;
+    padding: 4px 10px;
+    margin-right: 4px;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  nav.toc a:hover {
+    color: var(--accent);
+    border-color: var(--rule);
+  }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    min-height: 100vh;
+    padding: 120px 64px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 60px;
+    right: 64px;
+    width: 240px;
+    height: 240px;
+    border: 1px solid var(--accent);
+    opacity: 0.12;
+    transform: rotate(15deg);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: 110px;
+    right: 100px;
+    width: 240px;
+    height: 240px;
+    border: 1px solid var(--accent);
+    opacity: 0.08;
+    transform: rotate(-8deg);
+    pointer-events: none;
+  }
+  .hero .meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .hero .meta span strong {
+    color: var(--ink-dim);
+    font-weight: 500;
+    margin-left: 8px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(56px, 9vw, 144px);
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    margin: 80px 0 32px;
+    max-width: 14ch;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 400;
+  }
+  .hero .lede {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    max-width: 64ch;
+    margin-bottom: 48px;
+  }
+  .hero .lede strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .hero .footer-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 24px;
+    border-top: 1px solid var(--rule);
+    padding-top: 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.1em;
+  }
+  .hero .footer-strip .stack {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .hero .footer-strip .stack span {
+    color: var(--ink-dim);
+  }
+  .hero .footer-strip .stack span::before {
+    content: '▸ ';
+    color: var(--accent);
+  }
+
+  /* ---------- SECTION SCAFFOLDING ---------- */
+  section {
+    padding: 96px 64px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  section .section-header {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 40px;
+    margin-bottom: 64px;
+    align-items: start;
+  }
+  section .section-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    padding-top: 18px;
+    border-top: 2px solid var(--accent);
+  }
+  section h2 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(36px, 5vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    max-width: 22ch;
+  }
+  section h2 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  section .section-intro {
+    grid-column: 2;
+    margin-top: 24px;
+    color: var(--ink-dim);
+    font-size: 17px;
+    max-width: 70ch;
+    line-height: 1.65;
+  }
+  section .section-intro strong { color: var(--ink); }
+
+  h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  h4 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 22px;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+
+  p { margin-bottom: 14px; color: var(--ink-dim); }
+  p strong { color: var(--ink); font-weight: 500; }
+  code, .mono {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    color: var(--accent);
+    background: rgba(212, 255, 58, 0.07);
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid rgba(212, 255, 58, 0.15);
+  }
+
+  /* ---------- DIAGRAM PANELS ---------- */
+  .diagram-frame {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    padding: 32px;
+    position: relative;
+    margin-top: 32px;
+  }
+  .diagram-frame::before {
+    content: attr(data-label);
+    position: absolute;
+    top: -10px;
+    left: 24px;
+    background: var(--bg);
+    padding: 0 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .diagram-frame .corner {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--accent);
+  }
+  .diagram-frame .corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .diagram-frame .corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+  .diagram-frame .corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+  .diagram-frame .corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+  svg.diagram { width: 100%; height: auto; display: block; }
+
+  /* ---------- INFO GRID ---------- */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 32px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 32px;
+  }
+  @media (max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    padding: 24px;
+    position: relative;
+  }
+  .card .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: block;
+  }
+  .card .num {
+    font-family: var(--serif);
+    font-size: 48px;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--ink);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .card .num em { color: var(--accent); font-style: normal; }
+  .card p { margin-bottom: 0; font-size: 14px; }
+
+  /* ---------- KEY-VALUE LIST ---------- */
+  dl.kv {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 12px 24px;
+    font-size: 14px;
+    margin: 24px 0;
+  }
+  dl.kv dt {
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-top: 2px;
+  }
+  dl.kv dd { color: var(--ink-dim); }
+  dl.kv dd strong { color: var(--ink); }
+
+  /* ---------- TABLES ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 24px;
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+  table th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--accent);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-dim);
+    vertical-align: top;
+  }
+  table td:first-child { color: var(--ink); }
+  table tr:hover td { background: var(--panel); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+  }
+  .badge.ok { color: var(--ok); }
+  .badge.warn { color: var(--warn); }
+  .badge.bad { color: var(--bad); }
+  .badge.info { color: var(--info); }
+  .badge.dim { color: var(--ink-faint); }
+  .badge.lime { color: var(--accent); }
+
+  /* ---------- ALERT / DISCREPANCY ---------- */
+  .alert {
+    border-left: 3px solid var(--warn);
+    background: rgba(255, 120, 73, 0.05);
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .alert.bad { border-left-color: var(--bad); background: rgba(248, 81, 73, 0.05); }
+  .alert.ok { border-left-color: var(--ok); background: rgba(126, 231, 135, 0.05); }
+  .alert .alert-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--warn);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .alert.bad .alert-label { color: var(--bad); }
+  .alert.ok .alert-label { color: var(--ok); }
+  .alert p { margin-bottom: 6px; }
+  .alert p:last-child { margin-bottom: 0; }
+
+  /* ---------- FLOW STEP LIST ---------- */
+  ol.flow {
+    list-style: none;
+    counter-reset: flow;
+    margin-top: 24px;
+  }
+  ol.flow li {
+    counter-increment: flow;
+    position: relative;
+    padding: 16px 16px 16px 64px;
+    border-left: 1px solid var(--rule);
+    margin-left: 16px;
+  }
+  ol.flow li::before {
+    content: counter(flow, decimal-leading-zero);
+    position: absolute;
+    left: -16px;
+    top: 14px;
+    width: 32px;
+    height: 32px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+  }
+  ol.flow li strong { color: var(--ink); display: block; margin-bottom: 4px; font-family: var(--mono); font-size: 13px; }
+  ol.flow li p { margin: 0; font-size: 14px; }
+  ol.flow li code { font-size: 12px; }
+
+  /* ---------- LEGEND ---------- */
+  .legend {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--ink-dim);
+    margin-top: 16px;
+    padding: 12px 16px;
+    border: 1px dashed var(--rule);
+    text-transform: uppercase;
+  }
+  .legend span { display: flex; align-items: center; gap: 8px; }
+  .legend .swatch {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    border: 1px solid var(--ink-dim);
+  }
+
+  /* ---------- FOOTER ---------- */
+  footer.outro {
+    padding: 96px 64px;
+    background: var(--panel);
+    border-top: 1px solid var(--rule);
+  }
+  footer.outro .epigram {
+    font-family: var(--serif);
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 300;
+    line-height: 1.2;
+    max-width: 30ch;
+    color: var(--ink);
+    margin-bottom: 32px;
+    letter-spacing: -0.02em;
+  }
+  footer.outro .epigram em { font-style: italic; color: var(--accent); }
+  footer.outro .colophon {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    border-top: 1px solid var(--rule);
+    padding-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  /* ---------- ANIMATIONS ---------- */
+  @keyframes flow-dash {
+    to { stroke-dashoffset: -20; }
+  }
+  .flow-line {
+    stroke-dasharray: 4 4;
+    animation: flow-dash 1.5s linear infinite;
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  .pulse { animation: pulse-glow 2s ease-in-out infinite; }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fade-up 0.8s ease-out backwards; }
+
+  @media (max-width: 720px) {
+    section, .hero { padding-left: 24px; padding-right: 24px; }
+    section .section-header { grid-template-columns: 1fr; gap: 16px; }
+    section .section-intro { grid-column: 1; }
+    dl.kv { grid-template-columns: 1fr; }
+    dl.kv dt { padding-top: 0; margin-bottom: -8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="toc">
+  <span class="brand">▣ TOY_STORE / SYS_ARCH</span>
+  <a href="#overview">00 · Overview</a>
+  <a href="#topology">01 · Topology</a>
+  <a href="#nginx">02 · Nginx</a>
+  <a href="#backend">03 · Backend</a>
+  <a href="#auth">04 · Auth</a>
+  <a href="#data">05 · Data</a>
+  <a href="#cache">06 · Cache</a>
+  <a href="#payment">07 · Payment</a>
+  <a href="#frontend">08 · Frontend</a>
+  <a href="#audit">09 · Audit Trail</a>
+  <a href="#webhook">10 · Webhook</a>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="overview">
+  <div class="meta">
+    <span>DOC <strong>SYS-ARCH-01</strong></span>
+    <span>REV <strong>2026.04 / B</strong></span>
+    <span>SCOPE <strong>FULL-STACK / PROD-PARITY</strong></span>
+    <span>SOURCE <strong>CODE-AUDITED · POST-REMEDIATION</strong></span>
+  </div>
+
+  <div>
+    <h1 class="fade-up">A toy<br>store, <em>dissected</em>.</h1>
+    <p class="lede fade-up" style="animation-delay:.15s">
+      Five containerised services. One Go API. One Next.js client. One Postgres, one Redis,
+      one Nginx out front. <strong>This document describes the system as the code actually
+      builds it</strong> — not as the README narrates it. Every claim here has a file and line
+      behind it.
+    </p>
+  </div>
+
+  <div class="footer-strip fade-up" style="animation-delay:.3s">
+    <div class="stack">
+      <span>Go 1.23 / Gin</span>
+      <span>Next.js 14</span>
+      <span>PostgreSQL 16</span>
+      <span>Redis 7</span>
+      <span>Nginx 1.27</span>
+      <span>Docker Compose</span>
+    </div>
+    <span>↓ scroll to enter the system</span>
+  </div>
+</header>
+
+<!-- ============ 01 TOPOLOGY ============ -->
+<section id="topology">
+  <div class="section-header">
+    <div class="section-num">§ 01 / TOPOLOGY</div>
+    <div>
+      <h2>Five services,<br>one ingress, <em>one wire</em>.</h2>
+      <p class="section-intro">
+        Everything the user sees is delivered through Nginx on port 80. The four backing
+        services — <strong>nginx, frontend, backend, db, redis</strong> — communicate over
+        the internal Docker network. Only Nginx publishes a host port. The backend
+        additionally calls one external service: <code>toy.pequla.com/api</code>, which
+        owns the toy catalog.
+      </p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 01 — CONTAINER TOPOLOGY & TRAFFIC">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 620" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4ff3a"/>
+        </marker>
+        <marker id="arrow-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#545d68"/>
+        </marker>
+        <pattern id="grid-pat" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(139,148,158,0.06)" stroke-width="1"/>
+        </pattern>
+      </defs>
+
+      <rect width="1100" height="620" fill="url(#grid-pat)"/>
+
+      <!-- Browser -->
+      <g>
+        <rect x="40" y="270" width="140" height="80" fill="#161c25" stroke="#d4ff3a" stroke-width="1.5"/>
+        <text x="110" y="305" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="600">BROWSER</text>
+        <text x="110" y="325" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">CLIENT</text>
+      </g>
+
+      <!-- Docker network boundary -->
+      <rect x="220" y="40" width="720" height="540" fill="none" stroke="#2a323d" stroke-width="1" stroke-dasharray="6 4"/>
+      <text x="240" y="60" fill="#545d68" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ DOCKER COMPOSE NETWORK</text>
+
+      <!-- Nginx -->
+      <g>
+        <rect x="260" y="270" width="160" height="80" fill="#1c2530" stroke="#d4ff3a" stroke-width="2"/>
+        <text x="340" y="298" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="13" font-weight="700">NGINX</text>
+        <text x="340" y="316" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">:80 (host)</text>
+        <text x="340" y="334" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="9">REVERSE PROXY</text>
+      </g>
+
+      <!-- Frontend -->
+      <g>
+        <rect x="490" y="120" width="180" height="90" fill="#1c2530" stroke="#79c0ff" stroke-width="1.5"/>
+        <text x="580" y="148" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="13" font-weight="700">FRONTEND</text>
+        <text x="580" y="168" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">Next.js 14 / Node 20</text>
+        <text x="580" y="186" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">:3000 (internal)</text>
+      </g>
+
+      <!-- Backend -->
+      <g>
+        <rect x="490" y="400" width="180" height="100" fill="#1c2530" stroke="#7ee787" stroke-width="1.5"/>
+        <text x="580" y="428" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="13" font-weight="700">BACKEND</text>
+        <text x="580" y="448" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">Go 1.23 / Gin</text>
+        <text x="580" y="466" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">:8080 (internal)</text>
+        <text x="580" y="484" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">/health</text>
+      </g>
+
+      <!-- Postgres -->
+      <g>
+        <rect x="760" y="320" width="160" height="80" fill="#161c25" stroke="#79c0ff" stroke-width="1.5"/>
+        <text x="840" y="348" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="12" font-weight="700">POSTGRES 16</text>
+        <text x="840" y="366" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">:5432 (internal)</text>
+        <text x="840" y="382" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">5 TABLES</text>
+      </g>
+
+      <!-- Redis -->
+      <g>
+        <rect x="760" y="430" width="160" height="80" fill="#161c25" stroke="#ff7849" stroke-width="1.5"/>
+        <text x="840" y="458" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="12" font-weight="700">REDIS 7</text>
+        <text x="840" y="476" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10">:6379 (internal)</text>
+        <text x="840" y="492" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">JWT + CACHE</text>
+      </g>
+
+      <!-- External -->
+      <g>
+        <rect x="960" y="370" width="120" height="90" fill="#161c25" stroke="#545d68" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="1020" y="398" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10" font-weight="600">EXTERNAL</text>
+        <text x="1020" y="418" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">toy.pequla</text>
+        <text x="1020" y="432" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">.com/api</text>
+        <text x="1020" y="450" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="8">10s timeout</text>
+      </g>
+
+      <!-- Connections -->
+      <!-- Browser → Nginx -->
+      <path d="M 180 310 L 260 310" stroke="#d4ff3a" stroke-width="2" fill="none" marker-end="url(#arrow)" class="flow-line"/>
+      <text x="220" y="300" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="9">HTTP :80</text>
+
+      <!-- Nginx → Frontend -->
+      <path d="M 380 270 Q 380 220 490 180" stroke="#79c0ff" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <text x="395" y="220" fill="#79c0ff" font-family="JetBrains Mono" font-size="9">/ → frontend</text>
+
+      <!-- Nginx → Backend -->
+      <path d="M 380 350 Q 380 400 490 440" stroke="#7ee787" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <text x="395" y="400" fill="#7ee787" font-family="JetBrains Mono" font-size="9">/api/* → backend</text>
+
+      <!-- Frontend → Backend (SSR direct) -->
+      <path d="M 580 210 L 580 400" stroke="#545d68" stroke-width="1" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-dim)"/>
+      <text x="595" y="305" fill="#545d68" font-family="JetBrains Mono" font-size="9">SSR fetch</text>
+      <text x="595" y="318" fill="#545d68" font-family="JetBrains Mono" font-size="9">(home page)</text>
+
+      <!-- Backend → Postgres -->
+      <path d="M 670 440 Q 720 400 760 370" stroke="#79c0ff" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <text x="700" y="385" fill="#79c0ff" font-family="JetBrains Mono" font-size="9">pgx/v5</text>
+
+      <!-- Backend → Redis -->
+      <path d="M 670 470 L 760 470" stroke="#ff7849" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+      <text x="715" y="463" fill="#ff7849" font-family="JetBrains Mono" font-size="9">go-redis/v9</text>
+
+      <!-- Backend → External -->
+      <path d="M 670 460 Q 850 540 990 460" stroke="#545d68" stroke-width="1.5" fill="none" stroke-dasharray="6 3" marker-end="url(#arrow-dim)"/>
+      <text x="830" y="540" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">https / 10s timeout / cached in Redis</text>
+
+      <!-- Healthcheck markers -->
+      <circle cx="595" cy="498" r="3" fill="#7ee787" class="pulse"/>
+      <circle cx="855" cy="370" r="3" fill="#79c0ff" class="pulse"/>
+      <circle cx="855" cy="480" r="3" fill="#ff7849" class="pulse"/>
+    </svg>
+
+    <div class="legend">
+      <span><span class="swatch" style="background:#d4ff3a"></span>PUBLIC TRAFFIC</span>
+      <span><span class="swatch" style="background:#79c0ff"></span>SQL / FRONTEND</span>
+      <span><span class="swatch" style="background:#7ee787"></span>API / BACKEND</span>
+      <span><span class="swatch" style="background:#ff7849"></span>CACHE / REDIS</span>
+      <span><span class="swatch" style="background:#545d68"></span>INTERNAL / EXTERNAL HTTP</span>
+    </div>
+  </div>
+
+  <div class="grid-3" style="margin-top:48px">
+    <div class="card">
+      <span class="tag">▸ Service count</span>
+      <div class="num"><em>5</em></div>
+      <p>nginx · frontend · backend · db · redis. Each declared in <code>docker-compose.yml</code> with image, ports, depends_on, healthcheck.</p>
+    </div>
+    <div class="card">
+      <span class="tag">▸ Public ports</span>
+      <div class="num"><em>1</em></div>
+      <p>Only nginx publishes <code>80:80</code> to the host. All other services live on the Docker network only.</p>
+    </div>
+    <div class="card">
+      <span class="tag">▸ External deps</span>
+      <div class="num"><em>1</em></div>
+      <p><code>toy.pequla.com/api</code> owns the catalog. The frontend never calls it directly — every hit goes through the backend.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 NGINX ============ -->
+<section id="nginx">
+  <div class="section-header">
+    <div class="section-num">§ 02 / NGINX</div>
+    <div>
+      <h2>The <em>gatekeeper</em>:<br>routing &amp; rate limits.</h2>
+      <p class="section-intro">
+        Nginx is the only public surface. It does three jobs: it splits traffic between
+        the Next.js app and the Go API, it applies <strong>two distinct rate-limit
+        zones</strong>, and it lets <code>/health</code> through without throttling so
+        Docker can run its 10-second healthcheck. Decisions happen <strong>before any
+        request reaches the Go process</strong>.
+      </p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 02 — REQUEST ROUTING & RATE-LIMIT ZONES">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 540" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4ff3a"/>
+        </marker>
+      </defs>
+
+      <!-- Incoming -->
+      <text x="60" y="40" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="600" letter-spacing="2">▸ INCOMING REQUEST</text>
+
+      <rect x="40" y="50" width="180" height="60" fill="#1c2530" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="130" y="78" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="11">REQUEST :80</text>
+      <text x="130" y="95" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">$binary_remote_addr</text>
+
+      <!-- Decision -->
+      <path d="M 220 80 L 280 80" stroke="#d4ff3a" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+      <rect x="280" y="50" width="200" height="60" fill="#161c25" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="380" y="78" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">LOCATION MATCH</text>
+      <text x="380" y="95" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">most specific first</text>
+
+      <!-- Branches -->
+      <!-- = /health -->
+      <path d="M 380 110 L 380 150 L 600 150" stroke="#7ee787" stroke-width="1.5" fill="none" marker-end="url(#arrow2)"/>
+      <rect x="600" y="125" width="280" height="50" fill="#1c2530" stroke="#7ee787" stroke-width="1"/>
+      <text x="615" y="145" fill="#7ee787" font-family="JetBrains Mono" font-size="10" font-weight="600">= /health</text>
+      <text x="615" y="160" fill="#8b949e" font-family="JetBrains Mono" font-size="9">EXACT MATCH · NO RATE LIMIT · → backend</text>
+      <rect x="900" y="125" width="160" height="50" fill="#161c25" stroke="#545d68" stroke-width="1"/>
+      <text x="980" y="148" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="10">→ BACKEND</text>
+      <text x="980" y="163" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">unthrottled</text>
+
+      <!-- /api/auth -->
+      <path d="M 380 110 L 380 220 L 600 220" stroke="#ff7849" stroke-width="1.5" fill="none" marker-end="url(#arrow2)"/>
+      <rect x="600" y="195" width="280" height="50" fill="#1c2530" stroke="#ff7849" stroke-width="1"/>
+      <text x="615" y="215" fill="#ff7849" font-family="JetBrains Mono" font-size="10" font-weight="600">/api/auth/</text>
+      <text x="615" y="230" fill="#8b949e" font-family="JetBrains Mono" font-size="9">auth_limit · 10 r/min · burst=5 · nodelay</text>
+      <rect x="900" y="195" width="160" height="50" fill="#161c25" stroke="#545d68" stroke-width="1"/>
+      <text x="980" y="218" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="10">→ BACKEND</text>
+      <text x="980" y="233" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">strict throttle</text>
+
+      <!-- /api/health rewrite -->
+      <path d="M 380 110 L 380 290 L 600 290" stroke="#79c0ff" stroke-width="1.5" fill="none" marker-end="url(#arrow2)"/>
+      <rect x="600" y="265" width="280" height="50" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="615" y="285" fill="#79c0ff" font-family="JetBrains Mono" font-size="10" font-weight="600">/api/health</text>
+      <text x="615" y="300" fill="#8b949e" font-family="JetBrains Mono" font-size="9">internal rewrite → /health</text>
+      <rect x="900" y="265" width="160" height="50" fill="#161c25" stroke="#545d68" stroke-width="1"/>
+      <text x="980" y="288" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="10">→ /health</text>
+      <text x="980" y="303" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">re-routed</text>
+
+      <!-- /api/ -->
+      <path d="M 380 110 L 380 360 L 600 360" stroke="#d4ff3a" stroke-width="1.5" fill="none" marker-end="url(#arrow2)"/>
+      <rect x="600" y="335" width="280" height="50" fill="#1c2530" stroke="#d4ff3a" stroke-width="1"/>
+      <text x="615" y="355" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" font-weight="600">/api/</text>
+      <text x="615" y="370" fill="#8b949e" font-family="JetBrains Mono" font-size="9">api_limit · 200 r/min · burst=50 · nodelay</text>
+      <rect x="900" y="335" width="160" height="50" fill="#161c25" stroke="#545d68" stroke-width="1"/>
+      <text x="980" y="358" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10">→ BACKEND</text>
+      <text x="980" y="373" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">general api</text>
+
+      <!-- / -->
+      <path d="M 380 110 L 380 430 L 600 430" stroke="#79c0ff" stroke-width="1.5" fill="none" marker-end="url(#arrow2)"/>
+      <rect x="600" y="405" width="280" height="50" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="615" y="425" fill="#79c0ff" font-family="JetBrains Mono" font-size="10" font-weight="600">/  (catch-all)</text>
+      <text x="615" y="440" fill="#8b949e" font-family="JetBrains Mono" font-size="9">WebSocket upgrade headers · → frontend</text>
+      <rect x="900" y="405" width="160" height="50" fill="#161c25" stroke="#545d68" stroke-width="1"/>
+      <text x="980" y="428" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="10">→ FRONTEND</text>
+      <text x="980" y="443" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">Next.js</text>
+
+      <!-- Footnote -->
+      <text x="40" y="500" fill="#545d68" font-family="JetBrains Mono" font-size="10" letter-spacing="1">▸ NGINX EVALUATES LOCATIONS MOST-SPECIFIC FIRST. /health IS PROTECTED FROM /api/'S RATE LIMIT BY USING EXACT MATCH (=).</text>
+    </svg>
+  </div>
+
+  <div class="grid-2" style="margin-top:48px">
+    <div>
+      <h3>Two zones, two intents</h3>
+      <p>The strict zone exists to defeat brute-force on <code>/api/auth/login</code>. The general zone exists to throttle scrapers without bothering legitimate users.</p>
+      <dl class="kv">
+        <dt>auth_limit</dt><dd><strong>10 req/min</strong>, burst=5, 10MB zone, keyed on client IP. Applied to <code>/api/auth/</code>.</dd>
+        <dt>api_limit</dt><dd><strong>200 req/min</strong>, burst=50, 10MB zone, keyed on client IP. Applied to all other <code>/api/</code> traffic.</dd>
+        <dt>/health</dt><dd>Exact match. <strong>Bypasses both zones</strong> so Docker's healthcheck (every 10s) is never throttled.</dd>
+        <dt>/api/webhook/stripe</dt><dd>Falls under <code>api_limit</code> (no special rule). README's "no special rate limit" reads accurately.</dd>
+      </dl>
+    </div>
+    <div>
+      <h3>Why at the edge</h3>
+      <p>Putting the limit at Nginx — not in Go middleware — means a flood gets stopped before the Go runtime allocates a goroutine, parses the body, or touches the database. The cost of a rejected request stays as low as possible.</p>
+      <div class="alert">
+        <span class="alert-label">⚑ Note · Belt-and-suspenders</span>
+        <p>The backend <em>also</em> wraps <code>POST /api/auth/register</code> and <code>POST /api/auth/login</code> with an in-process <code>ulule/limiter</code> at 10/min. So auth endpoints have rate-limiting at <strong>both</strong> the Nginx and Gin layers. <span class="badge dim">router.go:62-67, 70-71</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 BACKEND ============ -->
+<section id="backend">
+  <div class="section-header">
+    <div class="section-num">§ 03 / BACKEND</div>
+    <div>
+      <h2>Three layers,<br><em>one quiet violation</em>.</h2>
+      <p class="section-intro">
+        The Go backend is organised as <strong>handler → service → repository → database</strong>.
+        Handlers touch HTTP. Services hold business rules. Repositories hold SQL. The
+        contract is documented and mostly respected — with one exception flagged at the
+        bottom of this section.
+      </p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 03 — REQUEST LIFECYCLE THROUGH GO LAYERS">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 380" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4ff3a"/>
+        </marker>
+      </defs>
+
+      <!-- Layer rails -->
+      <line x1="50" y1="60" x2="1060" y2="60" stroke="#2a323d" stroke-width="1"/>
+      <line x1="50" y1="320" x2="1060" y2="320" stroke="#2a323d" stroke-width="1"/>
+      <text x="50" y="50" fill="#545d68" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ HTTP REQUEST FLOW</text>
+
+      <!-- Step 1: Router/Middleware -->
+      <rect x="60" y="100" width="170" height="180" fill="#161c25" stroke="#79c0ff" stroke-width="1.5"/>
+      <text x="145" y="125" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="11" font-weight="700">ROUTER</text>
+      <text x="145" y="143" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">router.go</text>
+      <line x1="80" y1="155" x2="210" y2="155" stroke="#2a323d"/>
+      <text x="75" y="175" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› Recovery()</text>
+      <text x="75" y="195" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› requestLogger()</text>
+      <text x="75" y="215" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› corsMiddleware()</text>
+      <text x="75" y="245" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10">› RequireAuth()*</text>
+      <text x="75" y="265" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10">› RequireAdmin()*</text>
+
+      <path d="M 232 190 L 270 190" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+      <!-- Step 2: Handler -->
+      <rect x="270" y="100" width="170" height="180" fill="#161c25" stroke="#7ee787" stroke-width="1.5"/>
+      <text x="355" y="125" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="11" font-weight="700">HANDLER</text>
+      <text x="355" y="143" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">internal/handlers/</text>
+      <line x1="290" y1="155" x2="420" y2="155" stroke="#2a323d"/>
+      <text x="285" y="180" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› reads JSON body</text>
+      <text x="285" y="200" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› binds &amp; validates</text>
+      <text x="285" y="220" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› reads userID from</text>
+      <text x="285" y="234" fill="#8b949e" font-family="JetBrains Mono" font-size="10">  gin.Context</text>
+      <text x="285" y="258" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">› returns JSON</text>
+
+      <path d="M 442 190 L 480 190" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+      <!-- Step 3: Service -->
+      <rect x="480" y="100" width="170" height="180" fill="#161c25" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="565" y="125" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">SERVICE</text>
+      <text x="565" y="143" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">internal/services/</text>
+      <line x1="500" y1="155" x2="630" y2="155" stroke="#2a323d"/>
+      <text x="495" y="180" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› business rules</text>
+      <text x="495" y="200" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› orchestrates</text>
+      <text x="495" y="214" fill="#8b949e" font-family="JetBrains Mono" font-size="10">  repos / cache</text>
+      <text x="495" y="238" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› returns models</text>
+      <text x="495" y="258" fill="#8b949e" font-family="JetBrains Mono" font-size="10">  &amp; errors</text>
+
+      <path d="M 652 190 L 690 190" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+      <!-- Step 4: Repository -->
+      <rect x="690" y="100" width="170" height="180" fill="#161c25" stroke="#ff7849" stroke-width="1.5"/>
+      <text x="775" y="125" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="11" font-weight="700">REPOSITORY</text>
+      <text x="775" y="143" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">internal/repository/</text>
+      <line x1="710" y1="155" x2="840" y2="155" stroke="#2a323d"/>
+      <text x="705" y="180" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› parameterised SQL</text>
+      <text x="705" y="200" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› pgx.QueryRow / Exec</text>
+      <text x="705" y="220" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› transactions</text>
+      <text x="705" y="244" fill="#8b949e" font-family="JetBrains Mono" font-size="10">› scans → models</text>
+
+      <path d="M 862 190 L 900 190" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow3)"/>
+
+      <!-- Step 5: DB -->
+      <rect x="900" y="100" width="160" height="180" fill="#161c25" stroke="#79c0ff" stroke-width="1.5"/>
+      <text x="980" y="125" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="11" font-weight="700">POSTGRES</text>
+      <text x="980" y="143" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">pgxpool.Pool</text>
+      <line x1="920" y1="155" x2="1040" y2="155" stroke="#2a323d"/>
+      <text x="915" y="195" fill="#8b949e" font-family="JetBrains Mono" font-size="10">SQL execution</text>
+      <text x="915" y="215" fill="#8b949e" font-family="JetBrains Mono" font-size="10">+ Redis sidecar</text>
+      <text x="915" y="245" fill="#8b949e" font-family="JetBrains Mono" font-size="10">for cache &amp; JWT</text>
+      <text x="915" y="259" fill="#8b949e" font-family="JetBrains Mono" font-size="10">refresh tokens</text>
+
+      <text x="50" y="340" fill="#545d68" font-family="JetBrains Mono" font-size="9" letter-spacing="1">* RequireAuth applied per-route or per-group · RequireAdmin applied at /api/admin group level (security by default)</text>
+      <text x="50" y="360" fill="#545d68" font-family="JetBrains Mono" font-size="9" letter-spacing="1">▸ EVERY LAYER HAS ONE RESPONSIBILITY · CHANGING SQL TOUCHES ONE FILE · CHANGING HTTP TOUCHES ANOTHER</text>
+    </svg>
+  </div>
+
+  <h3 style="margin-top:64px">Route inventory</h3>
+  <p>Reconstructed from <code>internal/router/router.go</code>, not from the README. Every endpoint listed here was located in the source.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:80px">Method</th>
+        <th>Path</th>
+        <th style="width:170px">Middleware</th>
+        <th>Handler</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>POST</td><td>/api/auth/register</td><td><span class="badge warn">ulule 10/min</span></td><td>authHandler.Register</td></tr>
+      <tr><td>POST</td><td>/api/auth/login</td><td><span class="badge warn">ulule 10/min</span></td><td>authHandler.Login</td></tr>
+      <tr><td>POST</td><td>/api/auth/refresh</td><td><span class="badge dim">none</span></td><td>authHandler.Refresh</td></tr>
+      <tr><td>POST</td><td>/api/auth/logout</td><td><span class="badge ok">RequireAuth</span></td><td>authHandler.Logout</td></tr>
+      <tr><td>GET</td><td>/api/toys, /api/toys/:id, /age-groups, /types</td><td><span class="badge dim">public</span></td><td>toyHandler</td></tr>
+      <tr><td>GET / PUT</td><td>/api/user/profile, /api/user/password</td><td><span class="badge ok">RequireAuth</span></td><td>userHandler</td></tr>
+      <tr><td>GET / POST</td><td>/api/user/orders, /:id, /:id/cancel</td><td><span class="badge ok">RequireAuth</span></td><td>orderHandler</td></tr>
+      <tr><td>GET / POST / PUT / DELETE</td><td>/api/cart, /api/cart/:item_id</td><td><span class="badge ok">RequireAuth</span></td><td>cartHandler</td></tr>
+      <tr><td>GET / POST / DELETE</td><td>/api/wishlist, /:toy_id, /check/:toy_id</td><td><span class="badge ok">RequireAuth</span></td><td>wishlistHandler</td></tr>
+      <tr><td>POST</td><td>/api/checkout, /intent, /confirm</td><td><span class="badge ok">RequireAuth</span></td><td>orderHandler</td></tr>
+      <tr><td>POST</td><td>/api/webhook/stripe</td><td><span class="badge dim">HMAC sig</span></td><td>webhookHandler</td></tr>
+      <tr><td>9× routes</td><td>/api/admin/*</td><td><span class="badge ok">RequireAuth + RequireAdmin</span></td><td>adminHandler</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alert ok" style="margin-top:32px">
+    <span class="alert-label">✓ Layering invariant restored</span>
+    <p>Analytics and admin queries now route through a dedicated <strong><code>internal/repository/admin_repo.go</code></strong>. <code>admin_service.go</code> was rewritten to delegate to <code>AdminRepository</code> and no longer touches <code>pgxpool.Pool</code> directly. The three-layer rule holds across the whole codebase.</p>
+    <p><span class="badge dim">cite · backend/internal/repository/admin_repo.go (new) · backend/internal/services/admin_service.go (rewritten)</span></p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Logout now requires access token</span>
+    <p><code>POST /api/auth/logout</code> is now wrapped in <code>RequireAuth()</code> at <code>router.go:73</code>. The handler still revokes the refresh token in Redis, but identity comes from the access token — matching the README's API table and standard session-management practice.</p>
+    <p><span class="badge dim">verified · 401 returned without Authorization header · 200 with valid access · refresh key deleted from Redis</span></p>
+  </div>
+</section>
+
+<!-- ============ 04 AUTH ============ -->
+<section id="auth">
+  <div class="section-header">
+    <div class="section-num">§ 04 / AUTHENTICATION</div>
+    <div>
+      <h2>JWT, but <em>revocable</em>.</h2>
+      <p class="section-intro">
+        Two tokens. The <strong>access token</strong> (15 minutes) goes in the
+        <code>Authorization</code> header on every protected call. The <strong>refresh
+        token</strong> (7 days) is held in Redis under <code>refresh:&lt;userID&gt;:&lt;jti&gt;</code>
+        and used only to mint a new pair. Storing the refresh token server-side is what
+        makes <em>logout actually work</em> — without it, JWT is unrevocable until expiry.
+      </p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 04 — TOKEN LIFECYCLE & SILENT REFRESH">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 540" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4ff3a"/>
+        </marker>
+        <marker id="arrow4-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#f85149"/>
+        </marker>
+      </defs>
+
+      <!-- Lanes -->
+      <text x="60" y="35" fill="#79c0ff" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ CLIENT (BROWSER)</text>
+      <text x="430" y="35" fill="#7ee787" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ BACKEND (GO)</text>
+      <text x="850" y="35" fill="#ff7849" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ REDIS</text>
+
+      <line x1="380" y1="50" x2="380" y2="510" stroke="#2a323d" stroke-dasharray="4 4"/>
+      <line x1="800" y1="50" x2="800" y2="510" stroke="#2a323d" stroke-dasharray="4 4"/>
+
+      <!-- 1. Login -->
+      <text x="40" y="75" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">①  LOGIN</text>
+      <rect x="40" y="85" width="320" height="50" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="55" y="108" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">POST /api/auth/login</text>
+      <text x="55" y="125" fill="#8b949e" font-family="JetBrains Mono" font-size="9">{ email, password }</text>
+
+      <path d="M 360 110 L 400 110" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow4)"/>
+
+      <rect x="400" y="85" width="380" height="50" fill="#1c2530" stroke="#7ee787" stroke-width="1"/>
+      <text x="415" y="108" fill="#7ee787" font-family="JetBrains Mono" font-size="10">bcrypt.CompareHashAndPassword (cost 12)</text>
+      <text x="415" y="125" fill="#8b949e" font-family="JetBrains Mono" font-size="9">issue access(15m) + refresh(168h) · HS256 · jti, sub, iat, exp</text>
+
+      <path d="M 780 110 L 820 110" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow4)"/>
+      <rect x="820" y="85" width="240" height="50" fill="#1c2530" stroke="#ff7849" stroke-width="1"/>
+      <text x="835" y="108" fill="#ff7849" font-family="JetBrains Mono" font-size="10">SET refresh:&lt;uid&gt;:&lt;jti&gt;</text>
+      <text x="835" y="125" fill="#8b949e" font-family="JetBrains Mono" font-size="9">value="valid" · TTL 168h (hardcoded)</text>
+
+      <!-- 2. Auth call -->
+      <text x="40" y="170" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">②  PROTECTED REQUEST</text>
+      <rect x="40" y="180" width="320" height="50" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="55" y="203" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">GET /api/cart</text>
+      <text x="55" y="220" fill="#8b949e" font-family="JetBrains Mono" font-size="9">Authorization: Bearer &lt;access&gt;</text>
+
+      <path d="M 360 205 L 400 205" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow4)"/>
+
+      <rect x="400" y="180" width="380" height="50" fill="#1c2530" stroke="#7ee787" stroke-width="1"/>
+      <text x="415" y="203" fill="#7ee787" font-family="JetBrains Mono" font-size="10">RequireAuth() · verify HS256 sig · check exp</text>
+      <text x="415" y="220" fill="#8b949e" font-family="JetBrains Mono" font-size="9">reject if type != "access" · ctx.Set(userID, role, jti)</text>
+
+      <!-- 3. Expiry -->
+      <text x="40" y="265" fill="#ff7849" font-family="JetBrains Mono" font-size="11" font-weight="700">③  ACCESS EXPIRED → 401</text>
+      <rect x="40" y="275" width="320" height="50" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="55" y="298" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">interceptor catches 401</text>
+      <text x="55" y="315" fill="#8b949e" font-family="JetBrains Mono" font-size="9">if no refresh token → reject silently (no redirect)</text>
+
+      <path d="M 360 300 L 400 300" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow4)"/>
+
+      <rect x="400" y="275" width="380" height="50" fill="#1c2530" stroke="#7ee787" stroke-width="1"/>
+      <text x="415" y="298" fill="#7ee787" font-family="JetBrains Mono" font-size="10">POST /api/auth/refresh { refresh_token }</text>
+      <text x="415" y="315" fill="#8b949e" font-family="JetBrains Mono" font-size="9">verify sig · check Redis presence · rotate</text>
+
+      <path d="M 780 300 L 820 300" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow4)"/>
+      <rect x="820" y="275" width="240" height="50" fill="#1c2530" stroke="#ff7849" stroke-width="1"/>
+      <text x="835" y="298" fill="#ff7849" font-family="JetBrains Mono" font-size="10">EXISTS? + DEL old key</text>
+      <text x="835" y="315" fill="#8b949e" font-family="JetBrains Mono" font-size="9">SET new refresh key</text>
+
+      <!-- 4. Retry -->
+      <text x="40" y="360" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">④  RETRY ORIGINAL REQUEST</text>
+      <rect x="40" y="370" width="320" height="50" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="55" y="393" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">replay /api/cart with NEW access token</text>
+      <text x="55" y="410" fill="#8b949e" font-family="JetBrains Mono" font-size="9">user notices nothing — transparent UX</text>
+
+      <path d="M 360 395 L 400 395" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow4)"/>
+
+      <rect x="400" y="370" width="380" height="50" fill="#1c2530" stroke="#7ee787" stroke-width="1"/>
+      <text x="415" y="393" fill="#7ee787" font-family="JetBrains Mono" font-size="10">200 OK · cart returned</text>
+      <text x="415" y="410" fill="#8b949e" font-family="JetBrains Mono" font-size="9">subsequent calls use refreshed access for 15m</text>
+
+      <!-- 5. Logout -->
+      <text x="40" y="455" fill="#f85149" font-family="JetBrains Mono" font-size="11" font-weight="700">⑤  LOGOUT — REVOCATION POINT</text>
+      <rect x="40" y="465" width="320" height="50" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="55" y="488" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">POST /api/auth/logout</text>
+      <text x="55" y="505" fill="#8b949e" font-family="JetBrains Mono" font-size="9">{ refresh_token } — no auth middleware</text>
+
+      <path d="M 360 490 L 400 490" stroke="#f85149" stroke-width="1.5" marker-end="url(#arrow4-bad)"/>
+
+      <rect x="400" y="465" width="380" height="50" fill="#1c2530" stroke="#f85149" stroke-width="1"/>
+      <text x="415" y="488" fill="#f85149" font-family="JetBrains Mono" font-size="10">parse refresh JWT · extract jti · DEL key</text>
+      <text x="415" y="505" fill="#8b949e" font-family="JetBrains Mono" font-size="9">access still valid up to 15m — but refresh dies now</text>
+
+      <path d="M 780 490 L 820 490" stroke="#f85149" stroke-width="1.5" marker-end="url(#arrow4-bad)"/>
+      <rect x="820" y="465" width="240" height="50" fill="#1c2530" stroke="#f85149" stroke-width="1"/>
+      <text x="835" y="488" fill="#ff7849" font-family="JetBrains Mono" font-size="10">DEL refresh:&lt;uid&gt;:&lt;jti&gt;</text>
+      <text x="835" y="505" fill="#8b949e" font-family="JetBrains Mono" font-size="9">future refresh attempts → 401</text>
+    </svg>
+  </div>
+
+  <div class="grid-2" style="margin-top:48px">
+    <div>
+      <h3>What Redis buys you</h3>
+      <p>Storing the refresh token in Redis turns a stateless JWT into a server-checkable session. On <code>logout</code>, the key is deleted; future refresh attempts return 401 before a new pair is ever minted. The user can still send the <strong>old</strong> access token until its 15-minute window closes, but cannot extend their session.</p>
+      <dl class="kv">
+        <dt>Signing</dt><dd>HS256 · single shared secret <code>JWT_SECRET</code></dd>
+        <dt>Claims</dt><dd>user_id · role · type · jti · sub · iat · exp</dd>
+        <dt>Access TTL</dt><dd><strong>15 min</strong> (env <code>JWT_ACCESS_TTL</code>)</dd>
+        <dt>Refresh TTL</dt><dd><strong>168 h</strong> (env <code>JWT_REFRESH_TTL</code>)</dd>
+        <dt>Hashing</dt><dd>bcrypt cost <strong>12</strong> · 2¹² = 4096 rounds</dd>
+      </dl>
+    </div>
+    <div>
+      <h3>RBAC by route group, not by handler</h3>
+      <p>Admin protection is applied <strong>at the router group level</strong>, not on each handler:</p>
+      <pre style="background:var(--panel); border:1px solid var(--rule); padding:16px; font-family:var(--mono); font-size:12px; color:var(--ink-dim); overflow-x:auto; margin-top:16px;">adminGroup := r.Group("/api/admin")
+adminGroup.Use(authMiddleware.RequireAuth())
+adminGroup.Use(authMiddleware.RequireAdmin())
+{
+    adminGroup.GET("/users", ...)
+    adminGroup.GET("/orders", ...)
+    // every new endpoint inherits both
+}</pre>
+      <p style="margin-top:12px;">The implication: a developer who adds a new admin endpoint cannot accidentally forget to protect it. Security <em>by default</em>.</p>
+    </div>
+  </div>
+
+  <div class="alert ok" style="margin-top:24px">
+    <span class="alert-label">✓ Refresh TTL is now driven by env</span>
+    <p>The refresh token's Redis TTL was previously hardcoded <code>168 * time.Hour</code>. It now reads from <code>JWTManager.RefreshTTL()</code>, which is itself populated from <code>JWT_REFRESH_TTL</code>. The JWT <code>exp</code> claim and the Redis revocation key now expire at the same instant, regardless of the env value.</p>
+    <p><span class="badge dim">verified · TTL on refresh:&lt;uid&gt;:&lt;jti&gt; observed at 604799s (= 168h - 1s rounding) · matches JWT exp</span></p>
+  </div>
+</section>
+
+<!-- ============ 05 DATA ============ -->
+<section id="data">
+  <div class="section-header">
+    <div class="section-num">§ 05 / DATABASE</div>
+    <div>
+      <h2>Five tables.<br>One <em>snapshot trick</em>.</h2>
+      <p class="section-intro">
+        Postgres stores users, orders, order line items, cart, and wishlist. The catalog
+        is <strong>not</strong> stored — toys come from an external API. So when an order
+        is placed, line items capture a <strong>price/name/image snapshot</strong>. If
+        the external API changes a price tomorrow, today's order history doesn't lie.
+      </p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 05 — RELATIONAL SCHEMA & SNAPSHOT BOUNDARIES">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 600" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="fk-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#79c0ff"/>
+        </marker>
+      </defs>
+
+      <!-- USERS (centre) -->
+      <g>
+        <rect x="450" y="40" width="220" height="180" fill="#1c2530" stroke="#d4ff3a" stroke-width="2"/>
+        <rect x="450" y="40" width="220" height="28" fill="#d4ff3a"/>
+        <text x="560" y="59" text-anchor="middle" fill="#0d1117" font-family="JetBrains Mono" font-size="12" font-weight="700">USERS</text>
+        <text x="466" y="88" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10">▸ id   UUID PK</text>
+        <text x="466" y="106" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  username  VARCHAR(50) UQ</text>
+        <text x="466" y="124" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  email     VARCHAR(255) UQ</text>
+        <text x="466" y="142" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  password_hash  bcrypt12</text>
+        <text x="466" y="160" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  role     CHECK (user|admin)</text>
+        <text x="466" y="178" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  is_active   BOOL</text>
+        <text x="466" y="196" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  avatar_url, address, created_at</text>
+        <text x="466" y="212" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  idx: email, username</text>
+      </g>
+
+      <!-- ORDERS (left) -->
+      <g>
+        <rect x="60" y="280" width="240" height="180" fill="#1c2530" stroke="#79c0ff" stroke-width="1.5"/>
+        <rect x="60" y="280" width="240" height="28" fill="#79c0ff"/>
+        <text x="180" y="299" text-anchor="middle" fill="#0d1117" font-family="JetBrains Mono" font-size="12" font-weight="700">ORDERS</text>
+        <text x="76" y="328" fill="#79c0ff" font-family="JetBrains Mono" font-size="10">▸ id   UUID PK</text>
+        <text x="76" y="346" fill="#79c0ff" font-family="JetBrains Mono" font-size="10">  user_id  FK CASCADE</text>
+        <text x="76" y="364" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  status    CHECK (5 vals)</text>
+        <text x="76" y="382" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  payment_status</text>
+        <text x="76" y="400" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  total_amount NUMERIC</text>
+        <text x="76" y="418" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  shipping_address</text>
+        <text x="76" y="436" fill="#ff7849" font-family="JetBrains Mono" font-size="10">  cancellation_* (mig 005)</text>
+        <text x="76" y="454" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  idx: user_id, created_at DESC</text>
+      </g>
+
+      <!-- ORDER_ITEMS -->
+      <g>
+        <rect x="60" y="490" width="240" height="80" fill="#1c2530" stroke="#79c0ff" stroke-width="1.5"/>
+        <rect x="60" y="490" width="240" height="24" fill="#79c0ff"/>
+        <text x="180" y="507" text-anchor="middle" fill="#0d1117" font-family="JetBrains Mono" font-size="11" font-weight="700">ORDER_ITEMS</text>
+        <text x="76" y="532" fill="#79c0ff" font-family="JetBrains Mono" font-size="10">▸ id, order_id FK CASCADE</text>
+        <text x="76" y="548" fill="#ff7849" font-family="JetBrains Mono" font-size="10">  toy_name, image, price_at_purchase</text>
+        <text x="76" y="563" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  toy_id INTEGER (NO FK — external)</text>
+      </g>
+
+      <!-- CART_ITEMS (right) -->
+      <g>
+        <rect x="800" y="280" width="240" height="180" fill="#1c2530" stroke="#7ee787" stroke-width="1.5"/>
+        <rect x="800" y="280" width="240" height="28" fill="#7ee787"/>
+        <text x="920" y="299" text-anchor="middle" fill="#0d1117" font-family="JetBrains Mono" font-size="12" font-weight="700">CART_ITEMS</text>
+        <text x="816" y="328" fill="#7ee787" font-family="JetBrains Mono" font-size="10">▸ id   UUID PK</text>
+        <text x="816" y="346" fill="#7ee787" font-family="JetBrains Mono" font-size="10">  user_id  FK CASCADE</text>
+        <text x="816" y="364" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  toy_id   INTEGER</text>
+        <text x="816" y="382" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  toy_name_cache</text>
+        <text x="816" y="400" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  price_cache  NUMERIC</text>
+        <text x="816" y="418" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  quantity  CHECK &gt; 0</text>
+        <text x="816" y="436" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10">  UNIQUE(user_id, toy_id)</text>
+        <text x="816" y="454" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  no created_at</text>
+      </g>
+
+      <!-- WISHLIST (right bottom) -->
+      <g>
+        <rect x="800" y="490" width="240" height="80" fill="#1c2530" stroke="#ff7849" stroke-width="1.5"/>
+        <rect x="800" y="490" width="240" height="24" fill="#ff7849"/>
+        <text x="920" y="507" text-anchor="middle" fill="#0d1117" font-family="JetBrains Mono" font-size="11" font-weight="700">WISHLIST_ITEMS</text>
+        <text x="816" y="532" fill="#ff7849" font-family="JetBrains Mono" font-size="10">▸ id, user_id FK CASCADE</text>
+        <text x="816" y="548" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">  toy_id  INTEGER</text>
+        <text x="816" y="563" fill="#d4ff3a" font-family="JetBrains Mono" font-size="9">  UNIQUE(user_id, toy_id)</text>
+      </g>
+
+      <!-- Relationships -->
+      <!-- users → orders -->
+      <path d="M 470 220 Q 350 250 250 280" stroke="#79c0ff" stroke-width="1.5" fill="none" marker-end="url(#fk-arrow)"/>
+      <text x="320" y="245" fill="#79c0ff" font-family="JetBrains Mono" font-size="9">1 : N</text>
+
+      <!-- users → cart_items -->
+      <path d="M 650 220 Q 770 250 870 280" stroke="#7ee787" stroke-width="1.5" fill="none" marker-end="url(#fk-arrow)"/>
+      <text x="780" y="245" fill="#7ee787" font-family="JetBrains Mono" font-size="9">1 : N</text>
+
+      <!-- users → wishlist -->
+      <path d="M 670 200 Q 880 350 920 490" stroke="#ff7849" stroke-width="1.5" fill="none" marker-end="url(#fk-arrow)"/>
+      <text x="900" y="350" fill="#ff7849" font-family="JetBrains Mono" font-size="9">1 : N</text>
+
+      <!-- orders → order_items -->
+      <path d="M 180 460 L 180 490" stroke="#79c0ff" stroke-width="1.5" fill="none" marker-end="url(#fk-arrow)"/>
+      <text x="195" y="478" fill="#79c0ff" font-family="JetBrains Mono" font-size="9">1 : N</text>
+
+      <!-- External API hint -->
+      <g opacity="0.7">
+        <rect x="380" y="490" width="320" height="80" fill="#0d1117" stroke="#545d68" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="540" y="513" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="10" font-weight="600">EXTERNAL · toy.pequla.com/api</text>
+        <text x="540" y="533" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">/toy · /toy/:id · /toy/permalink/:slug</text>
+        <text x="540" y="548" text-anchor="middle" fill="#545d68" font-family="JetBrains Mono" font-size="9">/age-group · /type</text>
+        <text x="540" y="563" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="9">cached in Redis · NEVER stored in PG</text>
+      </g>
+
+      <text x="60" y="20" fill="#545d68" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ ALL FK RELATIONSHIPS ON DELETE CASCADE · NO ORPHANS</text>
+    </svg>
+  </div>
+
+  <div class="grid-2" style="margin-top:48px">
+    <div>
+      <h3>The snapshot pattern</h3>
+      <p>The catalog lives outside this system. Prices change. Items disappear. Orders, however, must be <strong>immutable historical records</strong>.</p>
+      <p>Solution: <code>order_items</code> stores <code>toy_name</code>, <code>toy_image_url</code>, and <code>price_at_purchase</code> as denormalised columns. <code>toy_id</code> is <code>INTEGER</code> with <strong>no foreign key</strong> — you can't FK to a system you don't own.</p>
+      <p><code>cart_items</code> uses the same approach via <code>*_cache</code> columns, for fast cart rendering without round-tripping the external API.</p>
+    </div>
+    <div>
+      <h3>Migrations, in order</h3>
+      <ol class="flow">
+        <li><strong>000001</strong><p>Create <code>users</code> + indices on email and username.</p></li>
+        <li><strong>000002</strong><p>Create <code>orders</code> and <code>order_items</code>. Status CHECK constraints baked in.</p></li>
+        <li><strong>000003</strong><p>Create <code>cart_items</code> with <code>UNIQUE(user_id, toy_id)</code>.</p></li>
+        <li><strong>000004</strong><p>Create <code>wishlist_items</code>. <span class="badge ok">.up + .down</span></p></li>
+        <li><strong>000005</strong><p><code>ALTER TABLE orders</code> — adds the four <code>cancellation_*</code> columns.</p></li>
+        <li><strong>000006</strong><p>Seed admin/user, 5 orders, 3 cart items, 4 wishlist items.</p></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 CACHE ============ -->
+<section id="cache">
+  <div class="section-header">
+    <div class="section-num">§ 06 / CACHE</div>
+    <div>
+      <h2>Cache-aside,<br>with <em>graceful degradation</em>.</h2>
+      <p class="section-intro">
+        Whenever a toy is requested, the backend checks Redis first. On hit: ~1ms response.
+        On miss: HTTP call to <code>toy.pequla.com</code>, write the result back to Redis,
+        return. If Redis is <em>unavailable</em>, the write fails — the backend logs a
+        warning and returns the data anyway. The cache is an accelerator, not a hard dependency.
+      </p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 06 — TOY CATALOG CACHE-ASIDE FLOW">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 460" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4ff3a"/>
+        </marker>
+        <marker id="arrow6-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#7ee787"/>
+        </marker>
+        <marker id="arrow6-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#ff7849"/>
+        </marker>
+      </defs>
+
+      <!-- Request -->
+      <rect x="40" y="180" width="160" height="60" fill="#1c2530" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="120" y="208" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="600">GET /api/toys</text>
+      <text x="120" y="225" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">handler → service</text>
+
+      <path d="M 200 210 L 250 210" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow6)"/>
+
+      <!-- Decision -->
+      <g>
+        <polygon points="250,210 350,160 450,210 350,260" fill="#161c25" stroke="#d4ff3a" stroke-width="1.5"/>
+        <text x="350" y="207" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">redis.Get</text>
+        <text x="350" y="223" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">"toys:all"</text>
+      </g>
+
+      <!-- HIT path -->
+      <path d="M 350 160 L 350 100 L 600 100" stroke="#7ee787" stroke-width="1.5" fill="none" marker-end="url(#arrow6-ok)"/>
+      <text x="475" y="92" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="10" font-weight="600">HIT  · ~1ms</text>
+
+      <rect x="600" y="80" width="240" height="50" fill="#1c2530" stroke="#7ee787" stroke-width="1"/>
+      <text x="720" y="100" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="10" font-weight="600">return cached JSON</text>
+      <text x="720" y="118" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">log: cache_hit · key=toys:all</text>
+
+      <!-- MISS path -->
+      <path d="M 350 260 L 350 320 L 470 320" stroke="#ff7849" stroke-width="1.5" fill="none" marker-end="url(#arrow6-warn)"/>
+      <text x="370" y="295" fill="#ff7849" font-family="JetBrains Mono" font-size="10" font-weight="600">MISS</text>
+
+      <!-- External fetch -->
+      <rect x="470" y="295" width="240" height="50" fill="#1c2530" stroke="#ff7849" stroke-width="1"/>
+      <text x="590" y="316" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="10" font-weight="600">GET toy.pequla.com/api/toy</text>
+      <text x="590" y="333" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">http.Client · 10s timeout</text>
+
+      <path d="M 710 320 L 750 320" stroke="#ff7849" stroke-width="1.5" fill="none" marker-end="url(#arrow6-warn)"/>
+
+      <!-- Write back to Redis -->
+      <rect x="750" y="295" width="280" height="50" fill="#1c2530" stroke="#d4ff3a" stroke-width="1"/>
+      <text x="890" y="316" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" font-weight="600">redis.Set TTL=5m</text>
+      <text x="890" y="333" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">on Set error → log.Warn, continue</text>
+
+      <!-- Return path from miss -->
+      <path d="M 890 345 L 890 400 L 720 400 L 720 130" stroke="#d4ff3a" stroke-width="1" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow6)"/>
+      <text x="800" y="395" fill="#8b949e" font-family="JetBrains Mono" font-size="9">return JSON (200–500ms)</text>
+
+      <!-- Footnote -->
+      <text x="50" y="445" fill="#545d68" font-family="JetBrains Mono" font-size="10" letter-spacing="1">▸ IF REDIS IS UNREACHABLE: Set() FAILS, Get() FAILS — BACKEND STILL FETCHES FROM EXTERNAL API. CACHE IS AN ACCELERATOR, NOT A DEPENDENCY.</text>
+    </svg>
+  </div>
+
+  <h3 style="margin-top:48px">Redis keyspace</h3>
+  <table>
+    <thead>
+      <tr><th>Key pattern</th><th style="width:120px">TTL</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>refresh:&lt;userID&gt;:&lt;jti&gt;</td><td>168 h</td><td>Server-checkable refresh token; deletion = revocation</td></tr>
+      <tr><td>toys:all</td><td>5 min</td><td>Full unfiltered catalog</td></tr>
+      <tr><td>toy:&lt;id&gt;</td><td>5 min</td><td>Single toy by numeric id</td></tr>
+      <tr><td>toy:permalink:&lt;slug&gt;</td><td>5 min</td><td>Single toy by slug</td></tr>
+      <tr><td>toys:filtered:&lt;ag&gt;:&lt;type&gt;:&lt;q&gt;</td><td>5 min</td><td>Filter combination — same filters share the same cache</td></tr>
+      <tr><td>age-groups</td><td>30 min</td><td>Metadata; rarely changes</td></tr>
+      <tr><td>toy-types</td><td>30 min</td><td>Metadata; rarely changes</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 07 PAYMENT ============ -->
+<section id="payment">
+  <div class="section-header">
+    <div class="section-num">§ 07 / PAYMENT</div>
+    <div>
+      <h2>Stripe, or<br><em>mock</em>. The key decides.</h2>
+      <p class="section-intro">
+        At startup the backend checks <code>STRIPE_SECRET_KEY</code>. If it begins with
+        <code>sk_</code>, real Stripe (test mode) is on: a <strong>two-step</strong> flow
+        of <code>intent → confirm</code> means the card never reaches our server. If the
+        key is empty or anything else, the system falls back to a <strong>mock flow</strong>
+        and creates an order immediately. One code path; one runtime branch.
+      </p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 07 — CHECKOUT BRANCHING (REAL STRIPE vs MOCK)">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 600" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4ff3a"/>
+        </marker>
+      </defs>
+
+      <!-- Trigger -->
+      <rect x="450" y="30" width="200" height="60" fill="#1c2530" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="550" y="58" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">USER CLICKS "PAY"</text>
+      <text x="550" y="75" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">checkout/page.tsx</text>
+
+      <path d="M 550 90 L 550 130" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow7)"/>
+
+      <!-- Diamond decision -->
+      <polygon points="550,130 720,210 550,290 380,210" fill="#161c25" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="550" y="200" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">STRIPE_SECRET_KEY</text>
+      <text x="550" y="218" text-anchor="middle" fill="#e6edf3" font-family="JetBrains Mono" font-size="11">starts with "sk_" ?</text>
+      <text x="550" y="236" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">payment_service.go:28</text>
+
+      <!-- LEFT: Mock branch -->
+      <path d="M 380 210 L 230 210" stroke="#ff7849" stroke-width="1.5" marker-end="url(#arrow7)"/>
+      <text x="305" y="200" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="10" font-weight="600">NO  · MOCK</text>
+
+      <rect x="40" y="270" width="320" height="240" fill="#1c2530" stroke="#ff7849" stroke-width="1.5"/>
+      <text x="200" y="295" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="11" font-weight="700">MOCK MODE</text>
+      <line x1="60" y1="305" x2="340" y2="305" stroke="#2a323d"/>
+      <text x="55" y="328" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">› POST /api/checkout</text>
+      <text x="55" y="346" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  no Stripe API call</text>
+      <text x="55" y="372" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">› order created at once</text>
+      <text x="55" y="390" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  payment_status = 'paid'</text>
+      <text x="55" y="416" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">› cart cleared</text>
+      <text x="55" y="442" fill="#7ee787" font-family="JetBrains Mono" font-size="10">› always succeeds</text>
+      <text x="55" y="478" fill="#545d68" font-family="JetBrains Mono" font-size="9">used in dev / academic demo</text>
+
+      <!-- RIGHT: Stripe branch -->
+      <path d="M 720 210 L 870 210" stroke="#7ee787" stroke-width="1.5" marker-end="url(#arrow7)"/>
+      <text x="795" y="200" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="10" font-weight="600">YES · STRIPE</text>
+
+      <rect x="740" y="270" width="320" height="240" fill="#1c2530" stroke="#7ee787" stroke-width="1.5"/>
+      <text x="900" y="295" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="11" font-weight="700">STRIPE TEST MODE</text>
+      <line x1="760" y1="305" x2="1040" y2="305" stroke="#2a323d"/>
+
+      <text x="755" y="328" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">› POST /checkout/intent</text>
+      <text x="755" y="344" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  → returns client_secret</text>
+
+      <text x="755" y="368" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">› Stripe.js shows card form</text>
+      <text x="755" y="384" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  card hits Stripe directly</text>
+
+      <text x="755" y="408" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">› stripe.confirmCardPayment</text>
+      <text x="755" y="424" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  client-side</text>
+
+      <text x="755" y="448" fill="#e6edf3" font-family="JetBrains Mono" font-size="10">› POST /checkout/confirm</text>
+      <text x="755" y="464" fill="#8b949e" font-family="JetBrains Mono" font-size="9">  backend verifies PI status</text>
+
+      <text x="755" y="488" fill="#7ee787" font-family="JetBrains Mono" font-size="10">› order created on success</text>
+
+      <!-- Convergence: DB transaction -->
+      <path d="M 200 510 L 200 540 L 550 540" stroke="#d4ff3a" stroke-width="1.5" fill="none"/>
+      <path d="M 900 510 L 900 540 L 550 540" stroke="#d4ff3a" stroke-width="1.5" fill="none" marker-end="url(#arrow7)"/>
+
+      <rect x="370" y="540" width="360" height="50" fill="#0d1117" stroke="#d4ff3a" stroke-width="2"/>
+      <text x="550" y="560" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">DB TRANSACTION (atomic)</text>
+      <text x="550" y="578" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">INSERT order → INSERT items (loop) → DELETE cart</text>
+    </svg>
+  </div>
+
+  <div class="grid-2" style="margin-top:48px">
+    <div>
+      <h3>Why two steps</h3>
+      <p>The intent/confirm split keeps the credit card off our server entirely. Stripe.js encrypts and sends the card to Stripe's PCI-compliant infrastructure. Our backend only sees a <code>payment_intent_id</code> and queries Stripe for its status. We never store, log, or proxy a card number.</p>
+      <dl class="kv">
+        <dt>Currency</dt><dd><code>"rsd"</code> — Serbian dinar</dd>
+        <dt>Amount unit</dt><dd>cart total × 100 (Stripe's smallest-unit convention)</dd>
+        <dt>Test card</dt><dd><code>4242 4242 4242 4242</code> · any future date · any 3-digit CVC</dd>
+        <dt>Order tx</dt><dd>INSERT orders → INSERT items → DELETE cart, all-or-nothing</dd>
+      </dl>
+    </div>
+    <div>
+      <h3>The webhook is observability-only</h3>
+      <p>The Stripe webhook endpoint <code>POST /api/webhook/stripe</code> verifies the HMAC-SHA256 signature against <code>STRIPE_WEBHOOK_SECRET</code>, then logs <code>payment_intent.succeeded</code> / <code>payment_intent.payment_failed</code>. It does <strong>not</strong> mutate any DB row.</p>
+      <div class="alert ok">
+        <span class="alert-label">✓ Webhook is observability-only by design</span>
+        <p>The architectural decision is documented: the order's <code>payment_status</code> is committed in-band at confirm-time, before the webhook fires. The webhook exists to log async Stripe events for monitoring, not to drive state transitions. See <a href="#webhook" style="color:var(--accent); text-decoration:underline;">§ 10</a> for the full posture.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 08 FRONTEND ============ -->
+<section id="frontend">
+  <div class="section-header">
+    <div class="section-num">§ 08 / FRONTEND</div>
+    <div>
+      <h2>One server page,<br><em>sixteen client</em>.</h2>
+      <p class="section-intro">
+        The Next.js app uses the App Router, but in practice almost every page is a Client
+        Component. The home page (<code>app/page.tsx</code>) is the lone Server Component
+        — it fetches the catalog server-side over the Docker network. State lives in
+        Zustand. Tokens live in <em>both</em> localStorage and cookies. The Axios
+        interceptor refreshes silently on 401.
+      </p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <span class="tag">▸ Pages found</span>
+      <div class="num"><em>17</em></div>
+      <p>Discovered under <code>frontend/src/app/</code>. <strong>16 declare <code>'use client'</code></strong>; only <code>app/page.tsx</code> is a true Server Component.</p>
+    </div>
+    <div class="card">
+      <span class="tag">▸ Server-side gating</span>
+      <div class="num"><em>/admin/*</em></div>
+      <p><code>middleware.ts</code> enforces auth + role on <code>/admin/*</code> only. <strong>/cart, /checkout, /profile, /wishlist</strong> are intentionally client-gated — they need Zustand state from the browser anyway, so SSR adds little. <span class="badge ok">documented</span></p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 08 — TOKEN HANDLING & SILENT REFRESH (CLIENT)" style="margin-top:32px">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 480" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4ff3a"/>
+        </marker>
+      </defs>
+
+      <!-- Storage layer -->
+      <rect x="40" y="40" width="1020" height="100" fill="#161c25" stroke="#79c0ff" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="60" y="65" fill="#79c0ff" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ TOKEN STORAGE — DUAL</text>
+
+      <rect x="80" y="80" width="280" height="40" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="220" y="98" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="10" font-weight="600">localStorage</text>
+      <text x="220" y="113" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">access_token · refresh_token · user</text>
+
+      <rect x="400" y="80" width="280" height="40" fill="#1c2530" stroke="#79c0ff" stroke-width="1"/>
+      <text x="540" y="98" text-anchor="middle" fill="#79c0ff" font-family="JetBrains Mono" font-size="10" font-weight="600">cookies (non-HttpOnly)</text>
+      <text x="540" y="113" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">path=/  ·  max-age=900 (15 min — matches access JWT)</text>
+
+      <rect x="720" y="80" width="300" height="40" fill="#1c2530" stroke="#d4ff3a" stroke-width="1"/>
+      <text x="870" y="98" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" font-weight="600">CustomEvent("auth-state-change")</text>
+      <text x="870" y="113" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">cross-tab + cross-component sync</text>
+
+      <!-- Interceptor flow -->
+      <text x="60" y="180" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ AXIOS REQUEST INTERCEPTOR</text>
+
+      <rect x="40" y="200" width="200" height="60" fill="#1c2530" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="140" y="226" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="11" font-weight="700">outgoing request</text>
+      <text x="140" y="243" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">read access from localStorage</text>
+
+      <path d="M 240 230 L 280 230" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow8)"/>
+
+      <polygon points="280,230 380,200 480,230 380,260" fill="#161c25" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="380" y="227" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" font-weight="600">isTokenExpired?</text>
+      <text x="380" y="243" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">decode JWT exp</text>
+
+      <!-- No -->
+      <path d="M 480 230 L 540 230" stroke="#7ee787" stroke-width="1.5" marker-end="url(#arrow8)"/>
+      <text x="510" y="220" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="9">NO</text>
+
+      <rect x="540" y="200" width="240" height="60" fill="#1c2530" stroke="#7ee787" stroke-width="1"/>
+      <text x="660" y="225" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="10" font-weight="600">attach Bearer header</text>
+      <text x="660" y="244" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">send request</text>
+
+      <!-- Yes -->
+      <path d="M 380 260 L 380 320 L 540 320" stroke="#ff7849" stroke-width="1.5" marker-end="url(#arrow8)"/>
+      <text x="395" y="295" fill="#ff7849" font-family="JetBrains Mono" font-size="9">YES — proactive refresh</text>
+
+      <rect x="540" y="295" width="240" height="60" fill="#1c2530" stroke="#ff7849" stroke-width="1"/>
+      <text x="660" y="320" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="10" font-weight="600">refresh BEFORE sending</text>
+      <text x="660" y="338" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">queue concurrent reqs · subscribeTokenRefresh</text>
+
+      <!-- Response -->
+      <text x="60" y="395" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ AXIOS RESPONSE INTERCEPTOR</text>
+
+      <rect x="40" y="410" width="240" height="50" fill="#1c2530" stroke="#f85149" stroke-width="1"/>
+      <text x="160" y="430" text-anchor="middle" fill="#f85149" font-family="JetBrains Mono" font-size="10" font-weight="600">401 — server says expired</text>
+      <text x="160" y="448" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">_retry guard prevents loops</text>
+
+      <path d="M 280 435 L 320 435" stroke="#d4ff3a" stroke-width="1.5" marker-end="url(#arrow8)"/>
+
+      <polygon points="320,435 420,410 520,435 420,460" fill="#161c25" stroke="#d4ff3a" stroke-width="1.5"/>
+      <text x="420" y="438" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" font-weight="600">refresh token exists?</text>
+
+      <path d="M 520 425 L 580 410" stroke="#7ee787" stroke-width="1.5" marker-end="url(#arrow8)"/>
+      <rect x="580" y="395" width="220" height="40" fill="#1c2530" stroke="#7ee787" stroke-width="1"/>
+      <text x="690" y="412" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="10">refresh + retry original</text>
+      <text x="690" y="427" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">on fail → redirect /login</text>
+
+      <path d="M 520 445 L 580 460" stroke="#ff7849" stroke-width="1.5" marker-end="url(#arrow8)"/>
+      <rect x="580" y="445" width="220" height="40" fill="#1c2530" stroke="#ff7849" stroke-width="1"/>
+      <text x="690" y="462" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="10">reject silently</text>
+      <text x="690" y="477" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">never logged in — no redirect</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ============ 09 DISCREPANCIES ============ -->
+<section id="audit">
+  <div class="section-header">
+    <div class="section-num">§ 09 / AUDIT TRAIL</div>
+    <div>
+      <h2>From red to green:<br>the <em>remediation pass</em>.</h2>
+      <p class="section-intro">
+        The previous revision of this document opened a "Reality Check" — six contradictions
+        between code and docs, four flagged items. <strong>This revision closes the loop.</strong>
+        Every contradiction has been resolved by either fixing the code or fixing the docs;
+        every flagged item has either been fixed or made into an explicit, documented design
+        decision. Each entry below is verified end-to-end against a live container.
+      </p>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card" style="border-color:var(--ok)">
+      <span class="tag" style="color:var(--ok)">✓ Resolved in this revision</span>
+      <div class="num" style="color:var(--ok)"><em>10</em></div>
+      <p>Every contradiction and flagged item from the previous audit, closed.</p>
+    </div>
+    <div class="card" style="border-color:var(--warn)">
+      <span class="tag" style="color:var(--warn)">⚑ Documented decisions</span>
+      <div class="num" style="color:var(--warn)"><em>3</em></div>
+      <p>Architectural choices that needed explicit naming. CORS, client-gated routes, webhook posture.</p>
+    </div>
+    <div class="card" style="border-color:var(--accent)">
+      <span class="tag" style="color:var(--accent)">▣ E2E verified</span>
+      <div class="num" style="color:var(--accent)"><em>11/11</em></div>
+      <p>Live integration checks against running containers. All passed.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:64px">Resolved — code fixes</h3>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Layering invariant restored</span>
+    <p>New <code>internal/repository/admin_repo.go</code> owns the analytics SQL. <code>admin_service.go</code> rewritten to delegate. No service touches <code>pgxpool.Pool</code> directly anywhere in the backend.</p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Logout requires access token</span>
+    <p><code>RequireAuth()</code> applied at <code>router.go:73</code>. Verified: 401 without Authorization, 200 with valid access, replay with revoked refresh returns 401.</p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Refresh TTL is config-driven</span>
+    <p>Hardcoded <code>168 * time.Hour</code> replaced at <code>auth_service.go:113</code> and <code>:193</code> with <code>jwtManager.RefreshTTL()</code>. Live Redis check shows TTL on the refresh key matches the JWT <code>exp</code> claim within 1s rounding.</p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Migration 000004 has a down file</span>
+    <p>New <code>000004_create_wishlist.down.sql</code> drops the index and table. Verified by <code>BEGIN; … ROLLBACK;</code> dry run against the live database.</p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Dead code removed</span>
+    <p><code>processStripePayment</code> deleted from <code>payment_service.go</code>. The USD/RSD currency contradiction is gone with it.</p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Cookie max-age matches access JWT</span>
+    <p><code>frontend/src/lib/auth.ts</code>: cookie <code>max-age</code> changed from <code>604800</code> (7 days) to <code>900</code> (15 minutes). The cookie no longer outlives the token it carries.</p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Admin cancellation-requests UI built</span>
+    <p>New <code>frontend/src/app/admin/cancellation-requests/page.tsx</code> lists pending requests with approve/decline + response textarea. Linked from admin layout as <strong>"Otkazivanja"</strong>. End-to-end verified: user cancels → admin approves → order status becomes <code>cancelled</code>.</p>
+  </div>
+
+  <h3 style="margin-top:48px">Resolved — documentation fixes</h3>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ <code>npm test</code> references removed</span>
+    <p><code>docs/AGENTS.md</code> and <code>docs/CLAUDE.md</code> no longer reference a non-existent test command. Both READMEs are silent on tests rather than misleading.</p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ Toys catalog Server/Client status corrected</span>
+    <p>README rewritten to say what's true: <strong>only <code>app/page.tsx</code> (home) is a Server Component</strong>. The dedicated catalog page at <code>app/toys/page.tsx</code> is a Client Component fetching via Axios. Same correction in <code>README.sr.md</code>.</p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ <code>POST /api/checkout</code> labelled accurately</span>
+    <p>API tables in both READMEs now state explicitly: <em>"Always uses mock payment, even when STRIPE_SECRET_KEY is set. Real Stripe flow uses /intent + /confirm."</em></p>
+  </div>
+
+  <div class="alert ok">
+    <span class="alert-label">✓ <code>INTERNAL_API_URL</code> documented</span>
+    <p>Added to <code>.env.example</code> with a comment on when to override (running <code>npm run dev</code> outside compose). The frontend's SSR fetch path is no longer an undocumented surface.</p>
+  </div>
+
+  <h3 style="margin-top:48px">Documented design decisions</h3>
+
+  <div class="alert">
+    <span class="alert-label">⚑ CORS = * (development posture)</span>
+    <p>The wildcard <code>Access-Control-Allow-Origin</code> at <code>router.go:203</code> is now an explicit subsection in both READMEs, with a note that production deployments should replace it with an allowlist. Not a bug — a documented choice.</p>
+  </div>
+
+  <div class="alert">
+    <span class="alert-label">⚑ /cart, /checkout, /profile, /wishlist are client-gated by design</span>
+    <p>These pages need Zustand state from the browser anyway; SSR adds little. Both READMEs now list this explicitly under the auth section, alongside the SSR-gated <code>/admin/*</code>.</p>
+  </div>
+
+  <div class="alert">
+    <span class="alert-label">⚑ Stripe webhook is observability-only</span>
+    <p>The order's <code>payment_status</code> is committed in-band at confirm-time. The webhook logs but does not transition state. Documented in both READMEs and given its own section in this presentation — <a href="#webhook" style="color:var(--accent); text-decoration:underline;">§ 10</a>.</p>
+  </div>
+
+  <h3 style="margin-top:48px">End-to-end verification</h3>
+  <p>The remediation pass was validated by running the full stack and exercising each affected path against a live container. Eleven checks; eleven passes.</p>
+
+  <table>
+    <thead>
+      <tr><th>Flow</th><th style="width:180px">Expected</th><th style="width:180px">Actual</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>POST /api/auth/logout — no Authorization</td><td>401</td><td><span class="badge ok">401</span></td></tr>
+      <tr><td>POST /api/auth/logout — valid access token</td><td>200</td><td><span class="badge ok">200</span></td></tr>
+      <tr><td>Logout replay with revoked refresh</td><td>401</td><td><span class="badge ok">401</span></td></tr>
+      <tr><td>Redis TTL on refresh:&lt;uid&gt;:&lt;jti&gt;</td><td>≈604800 s</td><td><span class="badge ok">604799 s</span></td></tr>
+      <tr><td>Refresh rotation invalidates old refresh</td><td>401 on replay</td><td><span class="badge ok">401</span></td></tr>
+      <tr><td>/api/admin/analytics (via new repo)</td><td>200 + payload</td><td><span class="badge ok">u=2 o=5 r=23689</span></td></tr>
+      <tr><td>/api/admin/cancellation-requests</td><td>200 + paginated</td><td><span class="badge ok">total=1</span></td></tr>
+      <tr><td>Mock checkout → user cancel → admin approve</td><td>order → cancelled</td><td><span class="badge ok">cancelled, approved</span></td></tr>
+      <tr><td>Wishlist 000004 down migration</td><td>DROP INDEX + TABLE</td><td><span class="badge ok">OK</span></td></tr>
+      <tr><td>/admin/cancellation-requests — no auth</td><td>307 → /login</td><td><span class="badge ok">307</span></td></tr>
+      <tr><td>/admin/cancellation-requests — admin cookie</td><td>200</td><td><span class="badge ok">200</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 10 WEBHOOK POSTURE ============ -->
+<section id="webhook">
+  <div class="section-header">
+    <div class="section-num">§ 10 / WEBHOOK POSTURE</div>
+    <div>
+      <h2>The webhook<br>is a <em>witness</em>, not a judge.</h2>
+      <p class="section-intro">
+        After remediation, the Stripe webhook's role is explicit. <strong>Order state is
+        decided in-band at confirm-time</strong>, before any webhook event arrives. The
+        webhook exists to log <code>payment_intent.succeeded</code> and
+        <code>payment_intent.payment_failed</code> for monitoring, audit, and future-state
+        reconciliation if it's ever needed. It does not write to the database. This is a
+        deliberate choice; the trade-offs are below.
+      </p>
+    </div>
+  </div>
+
+  <div class="diagram-frame" data-label="FIG. 10 — DECISION POINT vs OBSERVATION POINT">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <svg class="diagram" viewBox="0 0 1100 460" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4ff3a"/>
+        </marker>
+        <marker id="arrow10-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#ff7849"/>
+        </marker>
+      </defs>
+
+      <!-- Lanes -->
+      <text x="60" y="35" fill="#7ee787" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ DECISION PATH (in-band)</text>
+      <text x="60" y="270" fill="#ff7849" font-family="JetBrains Mono" font-size="10" letter-spacing="2">▸ OBSERVATION PATH (async)</text>
+
+      <line x1="40" y1="220" x2="1060" y2="220" stroke="#2a323d" stroke-dasharray="4 4"/>
+
+      <!-- DECISION PATH (top) -->
+      <rect x="40" y="60" width="180" height="60" fill="#1c2530" stroke="#7ee787" stroke-width="1.5"/>
+      <text x="130" y="86" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="11" font-weight="700">CONFIRM</text>
+      <text x="130" y="103" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">/api/checkout/confirm</text>
+
+      <path d="M 220 90 L 260 90" stroke="#7ee787" stroke-width="1.5" fill="none" marker-end="url(#arrow10)"/>
+
+      <rect x="260" y="60" width="220" height="60" fill="#1c2530" stroke="#7ee787" stroke-width="1.5"/>
+      <text x="370" y="86" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="10" font-weight="700">VERIFY WITH STRIPE</text>
+      <text x="370" y="103" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">PI.Status == "succeeded"?</text>
+
+      <path d="M 480 90 L 520 90" stroke="#7ee787" stroke-width="1.5" fill="none" marker-end="url(#arrow10)"/>
+
+      <rect x="520" y="60" width="240" height="60" fill="#0d1117" stroke="#d4ff3a" stroke-width="2"/>
+      <text x="640" y="84" text-anchor="middle" fill="#d4ff3a" font-family="JetBrains Mono" font-size="10" font-weight="700">DB TRANSACTION (atomic)</text>
+      <text x="640" y="100" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">INSERT order (status=processing,</text>
+      <text x="640" y="113" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">payment_status=paid) → items → DEL cart</text>
+
+      <path d="M 760 90 L 800 90" stroke="#7ee787" stroke-width="1.5" fill="none" marker-end="url(#arrow10)"/>
+
+      <rect x="800" y="60" width="220" height="60" fill="#1c2530" stroke="#7ee787" stroke-width="1.5"/>
+      <text x="910" y="86" text-anchor="middle" fill="#7ee787" font-family="JetBrains Mono" font-size="11" font-weight="700">200 OK → USER</text>
+      <text x="910" y="103" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">order_id returned in response</text>
+
+      <text x="40" y="155" fill="#7ee787" font-family="JetBrains Mono" font-size="10" font-weight="600">▸ AT THIS POINT THE ORDER EXISTS, IS PAID, AND THE CART IS EMPTY.</text>
+      <text x="40" y="172" fill="#545d68" font-family="JetBrains Mono" font-size="10">▸ The webhook hasn't fired yet — and won't, for a few seconds. We don't wait for it.</text>
+      <text x="40" y="189" fill="#545d68" font-family="JetBrains Mono" font-size="10">▸ This is the entire decision pipeline. Synchronous, atomic, fast. </text>
+
+      <!-- OBSERVATION PATH (bottom) -->
+      <rect x="40" y="290" width="180" height="60" fill="#1c2530" stroke="#ff7849" stroke-width="1.5"/>
+      <text x="130" y="316" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="11" font-weight="700">STRIPE EVENT</text>
+      <text x="130" y="333" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">payment_intent.succeeded</text>
+
+      <path d="M 220 320 L 260 320" stroke="#ff7849" stroke-width="1.5" fill="none" marker-end="url(#arrow10-warn)"/>
+
+      <rect x="260" y="290" width="220" height="60" fill="#1c2530" stroke="#ff7849" stroke-width="1.5"/>
+      <text x="370" y="316" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="10" font-weight="700">/api/webhook/stripe</text>
+      <text x="370" y="333" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">verify HMAC-SHA256 signature</text>
+
+      <path d="M 480 320 L 520 320" stroke="#ff7849" stroke-width="1.5" fill="none" marker-end="url(#arrow10-warn)"/>
+
+      <rect x="520" y="290" width="240" height="60" fill="#1c2530" stroke="#ff7849" stroke-width="1.5"/>
+      <text x="640" y="316" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="10" font-weight="700">LOG STRUCTURED EVENT</text>
+      <text x="640" y="333" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">zerolog · event_type, pi_id, amount</text>
+
+      <path d="M 760 320 L 800 320" stroke="#ff7849" stroke-width="1.5" fill="none" marker-end="url(#arrow10-warn)"/>
+
+      <rect x="800" y="290" width="220" height="60" fill="#1c2530" stroke="#ff7849" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <text x="910" y="316" text-anchor="middle" fill="#ff7849" font-family="JetBrains Mono" font-size="11" font-weight="700">200 → STRIPE</text>
+      <text x="910" y="333" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="9">no DB write · no state change</text>
+
+      <text x="40" y="385" fill="#ff7849" font-family="JetBrains Mono" font-size="10" font-weight="600">▸ THE WEBHOOK IS A WITNESS, NOT A JUDGE.</text>
+      <text x="40" y="402" fill="#545d68" font-family="JetBrains Mono" font-size="10">▸ Its job is to leave a structured record. Order state has already been decided above.</text>
+      <text x="40" y="419" fill="#545d68" font-family="JetBrains Mono" font-size="10">▸ If the in-band confirm-time check ever needs auditing, the webhook log is the audit source.</text>
+      <text x="40" y="436" fill="#545d68" font-family="JetBrains Mono" font-size="10">▸ If state-driving behaviour is ever required (refunds, async failures), this is where it would live.</text>
+    </svg>
+  </div>
+
+  <div class="grid-2" style="margin-top:48px">
+    <div>
+      <h3>Why this design</h3>
+      <p>The trade-off has a name in distributed-systems literature: <strong>synchronous decision, asynchronous observation</strong>. The user gets a fast, atomic answer. The webhook gives the operator a parallel record for monitoring and audit. The two paths can diverge — and if they ever do, that divergence is the bug, not the design.</p>
+      <p>Driving state from the webhook would mean accepting "order created but unpaid" as a transient state, with all the UI and recovery logic that implies. The current scope (academic project, mock-mode default) does not warrant that complexity.</p>
+    </div>
+    <div>
+      <h3>What the operator sees</h3>
+      <dl class="kv">
+        <dt>Endpoint</dt><dd><code>POST /api/webhook/stripe</code></dd>
+        <dt>Auth</dt><dd>HMAC-SHA256 signature against <code>STRIPE_WEBHOOK_SECRET</code></dd>
+        <dt>Events handled</dt><dd><code>payment_intent.succeeded</code> · <code>payment_intent.payment_failed</code></dd>
+        <dt>DB writes</dt><dd>none</dd>
+        <dt>Always returns</dt><dd>200 (so Stripe doesn't retry)</dd>
+        <dt>Skipped when</dt><dd><code>STRIPE_WEBHOOK_SECRET</code> empty (signature verification disabled in dev)</dd>
+      </dl>
+      <div class="alert">
+        <span class="alert-label">⚑ Dev-mode signature bypass</span>
+        <p>When <code>STRIPE_WEBHOOK_SECRET</code> is empty or a placeholder, signature verification is skipped at <code>payment_service.go:152-154</code>. Acceptable in development; in production the secret <strong>must</strong> be set.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="outro">
+  <p class="epigram">
+    The README was a hypothesis.<br>The <em>code is the proof</em>.<br>And now they agree.
+  </p>
+  <p style="max-width:60ch; margin-bottom:32px;">
+    Revision B closes every contradiction surfaced by the original code-first audit. Where
+    the code was wrong, the code was fixed. Where the docs were wrong, the docs were
+    rewritten — in both English and Serbian. Where intent was ambiguous, the choice was
+    made deliberately and documented as such. Each change was verified end-to-end against
+    a live container before this document was regenerated.
+  </p>
+  <div class="colophon">
+    <span>▣ TOY_STORE / SYS-ARCH-01 / REV 2026.04 · B</span>
+    <span>POST-REMEDIATION · CODE ↔ DOCS RECONCILED</span>
+    <span>github.com/bok1c4/toy_store</span>
+  </div>
+</footer>
+
+</body>
+</html>

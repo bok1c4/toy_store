@@ -37,9 +37,12 @@ export function saveTokens(accessToken: string, refreshToken: string): void {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
     
-    // Also save to cookies for server-side middleware access
-    document.cookie = `${ACCESS_TOKEN_KEY}=${accessToken}; path=/; max-age=604800`; // 7 days
-    document.cookie = `${REFRESH_TOKEN_KEY}=${refreshToken}; path=/; max-age=604800`;
+    // Also save to cookies for server-side middleware access.
+    // Max-age matches the access JWT lifetime (JWT_ACCESS_TTL = 15m). Once the
+    // cookie expires, the Next.js middleware sees no token and redirects /admin
+    // to /login — the Axios interceptor refreshes from localStorage and re-saves.
+    document.cookie = `${ACCESS_TOKEN_KEY}=${accessToken}; path=/; max-age=900`;
+    document.cookie = `${REFRESH_TOKEN_KEY}=${refreshToken}; path=/; max-age=900`;
     
     notifyAuthStateChange();
   }

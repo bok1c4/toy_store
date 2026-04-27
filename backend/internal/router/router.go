@@ -70,7 +70,7 @@ func New() *gin.Engine {
 	authGroup.POST("/register", mgin.NewMiddleware(instance), authHandler.Register)
 	authGroup.POST("/login", mgin.NewMiddleware(instance), authHandler.Login)
 	authGroup.POST("/refresh", authHandler.Refresh)
-	authGroup.POST("/logout", authHandler.Logout)
+	authGroup.POST("/logout", authMiddleware.RequireAuth(), authHandler.Logout)
 
 	toyGroup := r.Group("/api/toys")
 	{
@@ -142,7 +142,8 @@ func New() *gin.Engine {
 	userGroup.POST("/orders/:id/cancel", orderHandler.RequestCancellation)
 
 	// Admin routes
-	adminService := services.NewAdminService(db, userRepo)
+	adminRepo := repository.NewAdminRepository(db)
+	adminService := services.NewAdminService(adminRepo, userRepo)
 	adminHandler := handlers.NewAdminHandler(orderRepo, userRepo, adminService)
 	adminGroup := r.Group("/api/admin")
 	adminGroup.Use(authMiddleware.RequireAuth())

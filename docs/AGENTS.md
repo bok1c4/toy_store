@@ -59,10 +59,7 @@ npm run build                      # Production build
 npm start                          # Start production server
 
 # Testing
-npm test                           # Run all tests
-npm test -- --watch              # Watch mode
-npm test -- --testNamePattern="AuthForm"  # Run single test
-npm test -- --testPathPattern="components/auth"  # Run test file
+# (no frontend test runner is currently wired up)
 
 # Linting & Types
 npm run lint                       # ESLint
@@ -268,4 +265,4 @@ const { data } = await api.get('/toys');
 - [ ] No `console.log` in frontend code
 - [ ] No hardcoded secrets
 - [ ] All errors handled explicitly
-- [ ] Tests pass: `go test ./...` and `npm test`
+- [ ] Tests pass: `go test ./...` (no frontend test runner wired up)

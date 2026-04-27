@@ -38,8 +38,7 @@ cd frontend
 npm run dev                        # Dev server (port 3000)
 npm run lint                       # ESLint
 npx tsc --noEmit                   # Type check (must pass before commit)
-npm test                           # Run all tests
-npm test -- --testNamePattern="AuthForm"  # Run single test
+# (no frontend test runner is currently wired up — `npm test` is not configured)
 ```
 
 ## Architecture
