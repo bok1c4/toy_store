@@ -3,8 +3,8 @@ import Link from 'next/link';
 const showcaseCards = [
   { emoji: '🧩', label: 'Slagalice', href: '/toys?type=Slagalica' },
   { emoji: '🚗', label: 'Vozila', href: '/toys?type=Vozilo' },
-  { emoji: '🎨', label: 'Kreativne', href: '/toys?type=Kreativnost' },
-  { emoji: '🧸', label: 'Plišane', href: '/toys?type=Plišana' },
+  { emoji: '🎨', label: 'Kreativne', href: `/toys?type=${encodeURIComponent('Kreativni set')}` },
+  { emoji: '🧸', label: 'Plišane', href: `/toys?type=${encodeURIComponent('Plišana igračka')}` },
 ];
 
 export function HeroSection() {
